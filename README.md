@@ -217,3 +217,4 @@ Notes:
 - `skills` should be comma-separated in a single cell.
 - The upload button accepts `.csv` and `.xlsx` files.
 - After upload, the app shows a results page with created IDs and any row-level errors.
+# intern-matching
