@@ -1,0 +1,38 @@
+{
+  "name": "intern-guide-matching",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n SERVER,CLIENT -c cyan,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "setup": "npm install && npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --schema=prisma/schema.prisma && npx prisma db seed --schema=prisma/schema.prisma",
+    "start:local": "npm run setup && npm run dev",
+    "prestart": "npm run build",
+    "start": "npm start -w server",
+    "start:single": "npm run build && npm start -w server",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "exceljs": "^4.4.0",
+    "node-cron": "^4.2.1",
+    "prisma": "^5.22.0",
+    "react-select": "^5.10.2",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

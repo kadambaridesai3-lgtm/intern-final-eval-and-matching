@@ -1,0 +1,254 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Intern {
+  id                String     @id @default(cuid())
+  intern_id         String     @unique
+  full_name         String
+  phone             String
+  p_no              String?
+  intern_type       String
+  college           String
+  branch            String
+  department        String?
+  graduation_year   Int
+  cgpa              Float
+  twelfth_marks     Float?
+  tenth_marks       Float?
+  reference_name    String?
+  skills            String
+  preferred_domain  String
+  start_date        DateTime
+  duration_months   Int
+  end_date          DateTime
+  status            String     @default("Applied")
+  assigned_guide_id String?
+  Project_title     String?
+  Project_details   String?
+  created_at        DateTime   @default(now())
+  assigned_guide    Guide?     @relation(fields: [assigned_guide_id], references: [id])
+  match_logs        MatchLog[]
+  attendance_records AttendanceRecord[]
+  attendance_summaries AttendanceSummary[]
+  guide_feedbacks    GuideFeedback[]
+  final_evaluations  FinalInternshipEvaluation[]
+  smart_card_punches SmartCardPunch[]
+
+  @@map("interns")
+}
+
+model Guide {
+  id                     String     @id @default(cuid())
+  full_name              String
+  p_no                   String?
+  department             String
+  expertise_domains      String
+  required_skills        String
+  preferred_intern_types String
+  max_capacity           Int        @default(20)
+  is_complete            Boolean    @default(true)
+  created_at             DateTime   @default(now())
+  interns                Intern[]
+  match_logs             MatchLog[]
+
+  @@map("guides")
+}
+
+model MatchLog {
+  id           String    @id @default(cuid())
+  intern_id    String
+  guide_id     String
+  match_score  Float
+  matched_at   DateTime  @default(now())
+  confirmed_at DateTime?
+  Allotted_at  DateTime?
+  notes        String?
+  intern       Intern    @relation(fields: [intern_id], references: [id])
+  guide        Guide     @relation(fields: [guide_id], references: [id])
+
+  @@map("match_logs")
+}
+
+model ProjectReview {
+  id          String   @id @default(cuid())
+  title       String
+  batch_name  String
+  review_date DateTime
+  created_at  DateTime @default(now())
+
+  evaluations Evaluation[]
+  finalResults FinalResult[]
+  guideFeedbacks GuideFeedback[]
+  finalEvaluations FinalInternshipEvaluation[]
+
+  @@map("Project_reviews")
+}
+
+model Evaluation {
+  id             String @id @default(cuid())
+  review_id      String
+  presenter_id   String
+  presenter_name String
+  evaluator_id   String
+
+  is_hr          Boolean @default(false)
+
+  technical      Int
+  communication  Int
+  confidence     Int
+  understanding  Int
+  problem_solving Int
+  innovation     Int
+  documentation  Int
+  qa_handling    Int
+  presentation   Int
+  overall        Int
+
+  total_marks    Int
+
+  created_at     DateTime @default(now())
+
+  review         ProjectReview @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@map("evaluations")
+}
+
+
+model FinalResult {
+  id                 String   @id @default(cuid())
+  review_id          String
+  presenter_id       String
+  presenter_name     String
+
+  hr_score           Float    @default(0)
+  peer_average       Float    @default(0)
+  presentation_score Float    @default(0)
+
+  total_penalty      Float    @default(0)
+  final_score        Float    @default(0)
+
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  review             ProjectReview @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@unique([review_id, presenter_id])
+  @@map("final_results")
+}
+
+model AttendanceRecord {
+  id              String   @id @default(cuid())
+  intern_id       String
+  attendance_date DateTime
+  submitted_at    DateTime
+  status          String   @default("PRESENT")
+  created_at      DateTime @default(now())
+
+  intern          Intern   @relation(fields: [intern_id], references: [intern_id], onDelete: Cascade)
+
+  @@map("attendance_records")
+}
+
+model AttendanceSummary {
+  id                    String   @id @default(cuid())
+  intern_id             String
+  month                 Int?
+  year                  Int?
+  batch_name            String?
+  total_working_days    Int      @default(0)
+  present_days          Int      @default(0)
+  genuine_days          Int      @default(0)
+  attendance_percentage Float    @default(0)
+  sincerity_percentage  Float    @default(0)
+  attendance_score      Float    @default(0)
+  flagged               Boolean  @default(false)
+  flag_details          String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  intern          Intern   @relation(fields: [intern_id], references: [intern_id], onDelete: Cascade)
+
+  @@unique([intern_id, month, year])
+  @@map("attendance_summaries")
+}
+
+model GuideFeedback {
+  id                     String   @id @default(cuid())
+  intern_id              String
+  review_id              String?
+  guide_name             String?
+  discipline             Int      @default(0)
+  learning_ability       Int      @default(0)
+  teamwork               Int      @default(0)
+  communication          Int      @default(0)
+  task_completion        Int      @default(0)
+  
+  // New dimensions
+  quality_of_work        Int      @default(0)
+  problem_solving        Int      @default(0)
+  initiative_innovation  Int      @default(0)
+  learning_adaptability  Int      @default(0)
+  attendance_punctuality Int      @default(0)
+  professionalism_ethics Int      @default(0)
+  respect_authority      Int      @default(0)
+  accountability         Int      @default(0)
+  conflict_resolution    Int      @default(0)
+  empathy                Int      @default(0)
+  leadership_potential   Int      @default(0)
+  conflict_handling      Int      @default(0)
+
+  total_marks            Int      @default(0)
+  guide_score            Float    @default(0)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  intern          Intern   @relation(fields: [intern_id], references: [intern_id], onDelete: Cascade)
+  review          ProjectReview? @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@unique([intern_id, review_id])
+  @@map("guide_feedbacks")
+}
+
+model FinalInternshipEvaluation {
+  id                     String   @id @default(cuid())
+  intern_id              String
+  review_id              String?
+  project_score          Float?
+  attendance_score       Float    @default(0)
+  guide_score            Float    @default(0)
+  final_internship_score Float?
+  rank                   Int      @default(0)
+  grade                  String   @default("")
+  remarks                String   @default("")
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  intern          Intern   @relation(fields: [intern_id], references: [intern_id], onDelete: Cascade)
+  review          ProjectReview? @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@unique([intern_id, review_id])
+  @@map("final_internship_evaluations")
+}
+
+model SmartCardPunch {
+  id          String   @id @default(cuid())
+  intern_id   String
+  p_no        String
+  punch_date  DateTime
+  in_time     String?
+  out_time    String?
+  created_at  DateTime @default(now())
+
+  intern      Intern   @relation(fields: [intern_id], references: [intern_id], onDelete: Cascade)
+
+  @@unique([intern_id, punch_date])
+  @@map("smart_card_punches")
+}
+
