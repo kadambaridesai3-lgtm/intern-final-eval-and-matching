@@ -4,6 +4,7 @@ import { rankGuides, rankAllGuides, GuideInput } from '../utils/matching';
 import { parseStringArray, toStoredStringArray } from '../utils/stringArray';
 import { updateInternStatuses } from '../utils/updateInternStatuses';
 import { generateNextInternId } from '../utils/internId';
+import { generateAllFinalEvaluations } from '../services/finalEvaluationService';
 
 const router = Router();
 
@@ -98,6 +99,29 @@ router.post('/', async (req, res) => {
     if (!full_name || !email || !intern_type) {
       return res.status(400).json({ error: 'full_name, email, and intern_type are required' });
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address format' });
+    }
+
+    if (phone && !/^\+?[0-9]{10,14}$/.test(phone)) {
+      return res.status(400).json({ error: 'Invalid mobile number format' });
+    }
+
+    // Check P No uniqueness
+    if (p_no && p_no.trim() !== '') {
+      const duplicatePNo = await getPrisma().intern.findFirst({
+        where: {
+          p_no: p_no.trim()
+        }
+      });
+      if (duplicatePNo) {
+        return res.status(400).json({ error: `P No ${p_no} is already assigned to another intern.` });
+      }
+    }
+
+
 
     const guides = await loadGuides();
     const normalizedSkills = parseStringArray(skills);
@@ -329,6 +353,81 @@ router.patch('/:id/completed', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to Allotted intern' });
+  }
+});
+
+// PUT /api/interns/:id — Update intern details
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      full_name, email, phone, p_no, intern_type, college, branch, department,
+      graduation_year, cgpa, skills, preferred_domain,
+      start_date, duration_months, end_date,
+      project_required, status, assigned_guide_id
+    } = req.body;
+
+    if (!full_name || !email || !intern_type) {
+      return res.status(400).json({ error: 'full_name, email, and intern_type are required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address format' });
+    }
+
+    if (phone && !/^\+?[0-9]{10,14}$/.test(phone)) {
+      return res.status(400).json({ error: 'Invalid mobile number format' });
+    }
+
+    // Check P No uniqueness
+    if (p_no && p_no.trim() !== '') {
+      const duplicatePNo = await getPrisma().intern.findFirst({
+        where: {
+          p_no: p_no.trim(),
+          NOT: { id }
+        }
+      });
+      if (duplicatePNo) {
+        return res.status(400).json({ error: `P No ${p_no} is already assigned to another intern.` });
+      }
+    }
+
+
+
+    const normalizedSkills = parseStringArray(skills);
+
+    const intern = await getPrisma().intern.update({
+      where: { id },
+      data: {
+        full_name,
+        phone: phone ?? '',
+        p_no: p_no ? p_no.trim() : null,
+        intern_type,
+        college: college ?? '',
+        branch: branch ?? '',
+        department: department ?? '',
+        graduation_year: Number(graduation_year ?? new Date().getFullYear()),
+        cgpa: Number(cgpa ?? 0),
+        skills: toStoredStringArray(normalizedSkills),
+        preferred_domain: preferred_domain ?? '',
+        start_date: start_date ? new Date(start_date) : new Date(),
+        duration_months: Number(duration_months ?? 3),
+        end_date: end_date ? new Date(end_date) : new Date(),
+        status: status ?? 'Applied',
+        assigned_guide_id: assigned_guide_id || null,
+        project_required: project_required || 'Yes',
+      },
+      include: { assigned_guide: true }
+    });
+
+    // Recalculate evaluations
+    await generateAllFinalEvaluations();
+
+    res.json(normalizeIntern(intern));
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || 'Failed to update intern' });
   }
 });
 

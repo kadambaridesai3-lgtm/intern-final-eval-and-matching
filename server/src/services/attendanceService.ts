@@ -5,69 +5,160 @@ const prisma = getPrisma();
 
 // ── Excel Parsing ────────────────────────────────────────────────────────────
 
-interface RawAttendanceRow {
-  intern_id: string; // This holds the raw Intern ID / p_no from Excel
-  attendance_date: Date;
-  submitted_at: Date;
+export interface RawAttendanceRow {
+  p_no: string;
+  employee_name: string;
+  attendance_date: Date | null;
+  department: string;
+  attendance_status: string;
+  report_submitted: string;
+  submitted_at: Date | null;
+  remarks: string;
+  rowNum: number;
 }
 
-function pickCell(row: Record<string, unknown>, keys: string[]): unknown {
-  for (const key of keys) {
-    const value = row[key];
-    if (value !== undefined && value !== null && value !== '') {
-      return value;
-    }
+export function parseDateSafe(value: unknown): Date | null {
+  if (value === undefined || value === null || value === '') return null;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    return value;
   }
-  return '';
-}
-
-function toText(value: unknown): string {
-  if (value === undefined || value === null) return '';
-  if (value instanceof Date) return value.toISOString();
-  return String(value).trim();
-}
-
-function toDate(value: unknown, fallback: Date): Date {
-  if (value === undefined || value === null || value === '') return fallback;
-  if (value instanceof Date) return value;
   if (typeof value === 'number') {
-    const parsed = XLSX.SSF.parse_date_code(value);
-    if (parsed) {
-      return new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
+    try {
+      const parsed = XLSX.SSF.parse_date_code(value);
+      if (parsed) {
+        const d = new Date(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, parsed.S || 0);
+        if (!isNaN(d.getTime())) return d;
+      }
+    } catch {
+      return null;
     }
-    return fallback;
   }
   const text = String(value).trim();
+  const parts = text.split(/[-/]/);
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (year > 1000 && month >= 0 && month < 12 && day > 0 && day <= 31) {
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
   const parsedDate = new Date(text);
   if (!Number.isNaN(parsedDate.getTime())) return parsedDate;
-  return fallback;
+  return null;
 }
 
-export function parseAttendanceExcel(buffer: Buffer): RawAttendanceRow[] {
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+export function parseAttendanceExcel(filePath: string): RawAttendanceRow[] {
+  const workbook = XLSX.readFile(filePath, { cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
   console.log('[Attendance] Parsed', rows.length, 'rows from Excel');
 
+  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
+    const rowKeys = Object.keys(row);
+    const matchKey = rowKeys.find(k => 
+      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+    return matchKey !== undefined ? row[matchKey] : '';
+  };
+
   const parsed: RawAttendanceRow[] = [];
-  const now = new Date();
+  if (rows.length === 0) return parsed;
 
-  for (const row of rows) {
-    const intern_id = toText(pickCell(row, ['Intern ID', 'intern_id', 'P No', 'P.No', 'PNo', 'ID']));
-    const attendance_date = toDate(pickCell(row, ['Date', 'Attendance Date', 'attendance_date']), now);
-    const submitted_at = toDate(pickCell(row, ['Submitted At', 'submitted_at', 'Submission Date', 'Submission Time']), now);
+  // Detect if there are monthly date columns (e.g. "1-Jun", "2-Jun")
+  const firstRowKeys = Object.keys(rows[0]);
+  const dateColumnKeys = firstRowKeys.filter(k => /^\d+-[A-Za-z]+$/i.test(k.trim()));
 
-    if (!intern_id) {
-      console.log('[Attendance] Skipping row — no intern_id');
+  const hasDateColumns = dateColumnKeys.length > 0;
+  console.log('[Attendance] Has column-based date headers:', hasDateColumns, dateColumnKeys);
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNum = i + 2;
+
+    const isEmptyRow = Object.values(row).every(val => val === undefined || val === null || String(val).trim() === '');
+    if (isEmptyRow) {
       continue;
     }
 
-    parsed.push({ intern_id, attendance_date, submitted_at });
+    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
+    const employee_name = String(pickCell(row, ['Employee Name', 'EmployeeName', 'Name', 'Intern Name'])).trim();
+    const department = String(pickCell(row, ['Department Name', 'Dept.Name', 'department', 'Department'])).trim();
+
+    if (hasDateColumns) {
+      // Extract year from DOJ or DOL if available, else current year
+      let baseYear = new Date().getFullYear();
+      const rawDoj = pickCell(row, ['DOJ', 'doj', 'Start Date', 'start_date']);
+      if (rawDoj) {
+        const parsedDoj = parseDateSafe(rawDoj);
+        if (parsedDoj && !isNaN(parsedDoj.getTime())) {
+          baseYear = parsedDoj.getFullYear();
+        }
+      }
+      const rawDol = pickCell(row, ['DOL', 'dol', 'End Date', 'end_date']);
+      if (rawDol) {
+        const parsedDol = parseDateSafe(rawDol);
+        if (parsedDol && !isNaN(parsedDol.getTime())) {
+          baseYear = parsedDol.getFullYear();
+        }
+      }
+
+      for (const dateKey of dateColumnKeys) {
+        const val = String(row[dateKey]).trim().toUpperCase();
+        if (val === 'P') {
+          // Parse header string like "1-Jun" to date
+          const match = dateKey.trim().match(/^(\d+)-([A-Za-z]+)$/);
+          if (match) {
+            const day = parseInt(match[1]);
+            const monthStr = match[2];
+            const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+            const monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
+            if (monthIndex !== -1) {
+              const attendance_date = new Date(baseYear, monthIndex, day);
+              parsed.push({
+                p_no,
+                employee_name,
+                attendance_date,
+                department,
+                attendance_status: 'PRESENT',
+                report_submitted: 'YES',
+                submitted_at: attendance_date, // Submission same day -> Marks it as PRESENT (genuine)
+                remarks: '',
+                rowNum
+              });
+            }
+          }
+        }
+      }
+    } else {
+      // Standard row-based layout
+      const rawDate = pickCell(row, ['Date', 'date']);
+      const attendance_status = String(pickCell(row, ['Attendance Status', 'AttendanceStatus', 'Status'])).trim();
+      const report_submitted = String(pickCell(row, ['Report Submitted', 'ReportSubmitted'])).trim();
+      const rawSubmissionTime = pickCell(row, ['Submission Time', 'SubmissionTime', 'Submitted Time', 'submitted_time']);
+      const remarks = String(pickCell(row, ['Remarks', 'remarks'])).trim();
+
+      const attendance_date = parseDateSafe(rawDate);
+      const submitted_at = parseDateSafe(rawSubmissionTime);
+
+      parsed.push({
+        p_no,
+        employee_name,
+        attendance_date,
+        department,
+        attendance_status,
+        report_submitted,
+        submitted_at,
+        remarks,
+        rowNum
+      });
+    }
   }
 
-  console.log('[Attendance] Valid rows:', parsed.length);
   return parsed;
 }
 
@@ -184,45 +275,52 @@ export function getWorkingHours(inTime?: string | null, outTime?: string | null)
 
 export interface RawSmartCardRow {
   p_no: string;
-  punch_date: Date;
+  punch_date: Date | null;
   in_time: string;
   out_time: string;
+  rowNum: number;
 }
 
-export function parseSmartCardExcel(buffer: Buffer): RawSmartCardRow[] {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+export function parseSmartCardExcel(filePath: string): RawSmartCardRow[] {
+  const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
   console.log('[SmartCard] Parsed', rows.length, 'rows from Excel');
 
+  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
+    const rowKeys = Object.keys(row);
+    const matchKey = rowKeys.find(k => 
+      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+    return matchKey !== undefined ? row[matchKey] : '';
+  };
+
   const parsed: RawSmartCardRow[] = [];
-  const now = new Date();
 
-  for (const row of rows) {
-    const keys = Object.keys(row);
-    const getVal = (colNames: string[]) => {
-      const matchKey = keys.find(k => colNames.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, '')));
-      return matchKey ? row[matchKey] : '';
-    };
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNum = i + 2;
 
-    const pNo = String(getVal(['P No', 'pno', 'p_no', 'personalno', 'personal_no'])).trim();
-    const rawDate = getVal(['Date', 'punchdate', 'punch_date']);
-    const punch_date = toDate(rawDate, now);
-    const in_time = String(getVal(['In Time', 'intime', 'in'])).trim();
-    const out_time = String(getVal(['Out Time', 'outtime', 'out'])).trim();
-
-    if (!pNo) {
-      console.log('[SmartCard] Skipping row — no P No');
+    const isEmptyRow = Object.values(row).every(val => val === undefined || val === null || String(val).trim() === '');
+    if (isEmptyRow) {
       continue;
     }
 
+    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
+    const rawDate = pickCell(row, ['Date', 'date', 'Punch Date']);
+    const in_time = String(pickCell(row, ['In Time', 'InTime', 'In'])).trim();
+    const out_time = String(pickCell(row, ['Out Time', 'OutTime', 'Out'])).trim();
+
+    const punch_date = parseDateSafe(rawDate);
+
     parsed.push({
-      p_no: pNo,
+      p_no,
       punch_date,
       in_time: in_time || '',
       out_time: out_time || '',
+      rowNum
     });
   }
 

@@ -14,7 +14,7 @@ export default function ImportResults() {
     );
   }
 
-  const { created, created_ids, errors } = state;
+  const { created, created_ids, errors, warnings } = state;
 
   return (
     <div className="p-8">
@@ -23,8 +23,32 @@ export default function ImportResults() {
 
       <div className="card p-4 mt-6">
         <p className="font-medium">Created: {created}</p>
-        <p className="mt-1 text-sm text-gray-600">IDs created: {created_ids?.join(', ') || '—'}</p>
+        <p className="mt-1 text-sm text-gray-600">IDs created: {created_ids?.join(', ') || ''}</p>
       </div>
+
+      {warnings && warnings.length > 0 && (
+        <div className="card p-4 mt-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <h2 className="font-bold text-amber-800 flex items-center gap-1.5">
+            ⚠️ Warnings ({warnings.length})
+          </h2>
+          <table className="w-full mt-3 text-left">
+            <thead>
+              <tr className="text-sm text-amber-700">
+                <th className="py-2 w-16">Row</th>
+                <th className="py-2">Warning</th>
+              </tr>
+            </thead>
+            <tbody>
+              {warnings.map((w: any, idx: number) => (
+                <tr key={idx} className="border-t border-amber-100/70">
+                  <td className="py-2 text-sm font-semibold text-amber-800">{w.row}</td>
+                  <td className="py-2 text-sm text-amber-700">{w.warning || w.error}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="card p-4 mt-4">
         <h2 className="font-semibold">Errors</h2>
@@ -32,7 +56,7 @@ export default function ImportResults() {
           <table className="w-full mt-3 text-left">
             <thead>
               <tr className="text-sm text-gray-600">
-                <th className="py-2">Row</th>
+                <th className="py-2 w-16">Row</th>
                 <th className="py-2">Error</th>
               </tr>
             </thead>

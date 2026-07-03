@@ -147,14 +147,14 @@ export default function Leaderboard() {
             🏆 Project Review Leaderboard
           </h1>
           <p className="text-gray-600">
-            View final rankings with presentation scores and analytical skill penalties
+            View project review rankings with presentation scores and analytical skill penalties
           </p>
         </div>
 
         {/* Info Box */}
         <div className="bg-gradient-to-r from-purple-100 to-blue-100 border-l-4 border-purple-500 p-4 mb-8 rounded-lg">
           <p className="text-sm text-purple-900">
-            <strong>📊 Scoring Formula:</strong> Final Score = (HR Score + Peer Average) / 2 - Analytical Penalty
+            <strong>📊 Scoring Formula:</strong> Project Review Score = (HR Score + Peer Average) / 2 - Analytical Penalty
           </p>
           <p className="text-sm text-purple-900 mt-2">
             <strong>⚠️ Analytical Penalty:</strong> Applied based on how each evaluator's score compares to HR's evaluation (±5 tolerance)
@@ -220,6 +220,31 @@ export default function Leaderboard() {
             >
               {loading ? '⏳ Generating...' : 'Generate Leaderboard'}
             </button>
+            {data.length > 0 && (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/exports/project-review/${selectedReviewId}`);
+                    if (!res.ok) throw new Error('Export failed on backend');
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    a.download = `Project_Review_${todayStr}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch (err) {
+                    alert("Export Failed: Unable to generate Excel file. Please try again.");
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-bold text-sm transition-all shadow hover:shadow-md"
+              >
+                📥 Export to Excel
+              </button>
+            )}
           </div>
         </div>
 
@@ -239,13 +264,13 @@ export default function Leaderboard() {
                 <thead>
                   <tr className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
                     <th className="px-6 py-4 text-left font-bold">Rank</th>
-                    <th className="px-6 py-4 text-left font-bold">Intern ID</th>
+                    <th className="px-6 py-4 text-left font-bold">P.No</th>
                     <th className="px-6 py-4 text-left font-bold">Name</th>
                     <th className="px-6 py-4 text-center font-bold">HR Score</th>
                     <th className="px-6 py-4 text-center font-bold">Peer Avg</th>
                     <th className="px-6 py-4 text-center font-bold">Presentation Score</th>
                     <th className="px-6 py-4 text-center font-bold">⚠️ Penalty</th>
-                    <th className="px-6 py-4 text-center font-bold text-yellow-300">Final Score</th>
+                    <th className="px-6 py-4 text-center font-bold text-yellow-300">Final Project Review Score</th>
                     <th className="px-6 py-4 text-center font-bold">Action</th>
                   </tr>
                 </thead>

@@ -5,6 +5,7 @@ import { getInterns, importInternsFile, deleteIntern } from '../api';
 import { Intern, InternStatus, InternType } from '../types';
 import StatusBadge from '../components/StatusBadge';
 import SortableTable, { Column } from '../components/SortableTable';
+import { downloadTemplateFile } from '../utils/EvaluationTemplates';
 
 const STATUSES: InternStatus[] = ['Applied', 'Matched', 'Completed', 'Waitlisted', 'Allotted','YetToJoin','Left'];
 const TYPES: InternType[] = ['B.Tech', 'MBA', 'Diploma', 'Sponsored'];
@@ -21,68 +22,7 @@ export default function InternsList() {
   const search = searchParams.get('search') ?? '';
 
   function downloadTemplate() {
-    const headers = [
-      'full_name',
-      'email',
-      'phone',
-      'intern_type',
-      'college',
-      'branch',
-      'graduation_year',
-      'cgpa',
-      'skills',
-      'preferred_domain',
-      'start_date',
-      'duration_months',
-      'end_date'
-    ];
-
-    const sampleRow = [
-      'Aarav Sharma',
-      'aarav.sharma@example.com',
-      '9876543210',
-      'B.Tech',
-      'Pimpri College of Engineering',
-      'Mechanical',
-      '2026',
-      '8.4',
-      'AutoCAD, SolidWorks, Teamwork',
-      'Manufacturing',
-      '2026-06-01',
-      '3',
-      '2026-09-01',
-    ];
-
-    const rows = [headers, sampleRow];
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Interns Template');
-
-    const instructions = XLSX.utils.aoa_to_sheet([
-      ['Field', 'Description', 'Example'],
-      ['full_name', 'Intern full name', 'Aarav Sharma'],
-      ['email', 'Unique email address', 'aarav.sharma@example.com'],
-      ['phone', 'Phone number', '9876543210'],
-      ['intern_type', 'B.Tech, MBA, Diploma, or Sponsored', 'B.Tech'],
-      ['college', 'College or institute name', 'Pimpri College of Engineering'],
-      ['branch', 'Branch / stream', 'Mechanical'],
-      ['graduation_year', 'Year of graduation', '2026'],
-      ['cgpa', 'CGPA on a 10-point scale', '8.4'],
-      ['skills', 'Comma-separated skills in one cell', 'AutoCAD, SolidWorks, Teamwork'],
-      ['preferred_domain', 'Preferred domain', 'Manufacturing'],
-      ['start_date', 'ISO date or spreadsheet date', '2026-06-01'],
-      ['duration_months', 'Internship duration in months', '3'],
-    ]);
-    XLSX.utils.book_append_sheet(workbook, instructions, 'Instructions');
-
-    const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'interns-template.xlsx';
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadTemplateFile('intern_master');
   }
 
   function setParam(key: string, val: string) {
@@ -108,7 +48,7 @@ export default function InternsList() {
   const columns: Column<Intern>[] = [
     {
       key: 'p_no',
-      label: 'P No',
+      label: 'P.No',
       sortValue: (r) => r.p_no ?? '',
       render: (r) => <span className="font-medium text-tata-navy">{r.p_no}</span>,
     },
@@ -219,7 +159,13 @@ export default function InternsList() {
           <button onClick={() => navigate('/interns/new')} className="btn-primary">
             + Add Intern
           </button>
-          <button className="btn-secondary" onClick={downloadTemplate}>
+          <button className="btn-secondary" onClick={() => {
+            try {
+              downloadTemplate();
+            } catch (err) {
+              alert("Unable to download file. Please select a folder or check browser download permissions.");
+            }
+          }}>
             Download Template
           </button>
           <label className="btn-secondary cursor-pointer">
@@ -241,6 +187,32 @@ export default function InternsList() {
               }}
             />
           </label>
+          {interns.length > 0 && (
+            <button
+              onClick={async () => {
+                try {
+                  const baseApi = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api`;
+                  const res = await fetch(`${baseApi}/exports/interns`);
+                  if (!res.ok) throw new Error('Export failed on backend');
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const todayStr = new Date().toISOString().split('T')[0];
+                  a.download = `Intern_List_${todayStr}.xlsx`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                } catch (err) {
+                  alert("Export Failed: Unable to generate Excel file. Please try again.");
+                }
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs"
+            >
+              📥 Export to Excel
+            </button>
+          )}
         </div>
       </div>
 

@@ -61,10 +61,10 @@ export default function ProjectReviewDashboard() {
           >
             <div className="text-4xl mb-3">📊</div>
             <h2 className="text-xl font-bold">
-              Final Results
+              Project Review Results
             </h2>
             <p className="text-orange-100 mt-2 text-sm">
-              View final scores
+              View project review scores
             </p>
           </Link>
 

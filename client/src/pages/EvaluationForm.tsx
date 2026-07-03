@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+interface InternOption {
+  intern_id: string;
+  p_no: string;
+  full_name: string;
+  status: string;
+}
 
 export default function EvaluationForm() {
+  const [interns, setInterns] = useState<InternOption[]>([]);
   const [form, setForm] = useState({
     review_id: '',
     presenter_id: '',
@@ -18,6 +26,21 @@ export default function EvaluationForm() {
     presentation: 0,
     overall: 0
   });
+
+  useEffect(() => {
+    async function loadInterns() {
+      try {
+        const res = await fetch('/api/interns');
+        if (res.ok) {
+          const data = await res.json();
+          setInterns(data);
+        }
+      } catch (err) {
+        console.error('Failed to load interns:', err);
+      }
+    }
+    loadInterns();
+  }, []);
 
   const [totalScore, setTotalScore] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -162,24 +185,41 @@ export default function EvaluationForm() {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">Presenter Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Presenter ID *"
-                  className="border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-blue-500"
-                  value={form.presenter_id}
-                  onChange={(e) =>
-                    setForm({ ...form, presenter_id: e.target.value })
-                  }
-                />
-                <input
-                  type="text"
-                  placeholder="Presenter Name"
-                  className="border-2 border-gray-300 rounded-lg p-3 focus:outline-none focus:border-blue-500"
-                  value={form.presenter_name}
-                  onChange={(e) =>
-                    setForm({ ...form, presenter_name: e.target.value })
-                  }
-                />
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-gray-600 mb-1.5">Select Presenter *</label>
+                  <select
+                    className="border-2 border-gray-300 rounded-lg p-3 bg-white focus:outline-none focus:border-blue-500 text-sm font-medium"
+                    value={form.presenter_id}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const selectedIntern = interns.find(i => i.intern_id === selectedId);
+                      setForm({
+                        ...form,
+                        presenter_id: selectedId,
+                        presenter_name: selectedIntern ? selectedIntern.full_name : ''
+                      });
+                    }}
+                  >
+                    <option value="">-- Choose Intern --</option>
+                    {interns
+                      .filter(i => ['Applied', 'Matched', 'Assigned', 'Ongoing', 'Completed'].includes(i.status || ''))
+                      .map(i => (
+                        <option key={i.intern_id} value={i.intern_id}>
+                          {i.full_name} ({i.p_no})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-semibold text-gray-600 mb-1.5">Presenter Name</label>
+                  <input
+                    type="text"
+                    disabled
+                    placeholder="Presenter Name"
+                    className="border-2 border-gray-200 bg-gray-50 rounded-lg p-3 text-gray-500 font-medium text-sm"
+                    value={form.presenter_name}
+                  />
+                </div>
               </div>
 
               <div className="mt-4">

@@ -159,9 +159,17 @@ export default function InternDetail() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-tata-navy">{intern.full_name}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{intern.college} · {intern.branch}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{intern.college} · {intern.branch} (P No: {intern.p_no})</p>
           </div>
-          <StatusBadge status={intern.status} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate(`/interns/${intern.id}/edit`)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+            >
+              ✏️ Edit Profile
+            </button>
+            <StatusBadge status={intern.status} />
+          </div>
         </div>
       </div>
 

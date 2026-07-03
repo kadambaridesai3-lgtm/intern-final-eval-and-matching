@@ -42,6 +42,9 @@ export const createIntern = (data: Partial<Intern>) =>
     { method: 'POST', body: JSON.stringify(data) },
   );
 
+export const updateIntern = (id: string, data: Partial<Intern>) =>
+  req<Intern>(`/interns/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+
 export const confirmMatch = (id: string, guideId?: string, notes?: string) =>
   req<Intern>(`/interns/${id}/confirm`, {
     method: 'PATCH',

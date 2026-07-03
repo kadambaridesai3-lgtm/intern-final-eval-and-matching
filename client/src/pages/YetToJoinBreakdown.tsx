@@ -41,16 +41,27 @@ export default function YetToJoinBreakdown() {
   />
 </div>
     <button
-  onClick={() =>
-    window.open(
-      '/api/dashboard/yet-to-join-download',
-      '_blank'
-    )
-  }
-  className="btn-primary"
->
-  Download Participants
-</button>
+      onClick={async () => {
+        try {
+          const res = await fetch('/api/dashboard/yet-to-join-download');
+          if (!res.ok) throw new Error('Failed to download file');
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = url;
+          anchor.download = 'yet-to-join-interns.xlsx';
+          document.body.appendChild(anchor);
+          anchor.click();
+          document.body.removeChild(anchor);
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          alert("Download could not be started. Please verify browser download permissions.");
+        }
+      }}
+      className="btn-primary"
+    >
+      Download Participants
+    </button>
 <div className="card p-4 mt-6">
   <ResponsiveContainer width="100%" height={400}>
     <BarChart data={filteredData}>

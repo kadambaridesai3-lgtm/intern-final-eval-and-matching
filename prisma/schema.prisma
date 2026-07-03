@@ -32,6 +32,7 @@ model Intern {
   assigned_guide_id String?
   Project_title     String?
   Project_details   String?
+  project_required  String?    @default("Yes")
   created_at        DateTime   @default(now())
   assigned_guide    Guide?     @relation(fields: [assigned_guide_id], references: [id])
   match_logs        MatchLog[]
@@ -184,6 +185,7 @@ model GuideFeedback {
   intern_id              String
   review_id              String?
   guide_name             String?
+  department             String?  @default("")
   discipline             Int      @default(0)
   learning_ability       Int      @default(0)
   teamwork               Int      @default(0)
@@ -206,6 +208,7 @@ model GuideFeedback {
 
   total_marks            Int      @default(0)
   guide_score            Float    @default(0)
+  percentage             Float    @default(0)
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
 
@@ -250,5 +253,31 @@ model SmartCardPunch {
 
   @@unique([intern_id, punch_date])
   @@map("smart_card_punches")
+}
+
+model UploadHistory {
+  id              String   @id @default(cuid())
+  file_name       String
+  upload_time     DateTime @default(now())
+  uploaded_by     String   @default("System Admin")
+  records_imported Int      @default(0)
+  status          String   @default("Success")
+  module          String   @default("General")
+
+  @@map("upload_history")
+}
+
+model CorporateAuditLog {
+  id          String   @id @default(cuid())
+  user        String   @default("System User")
+  module      String
+  action      String
+  description String
+  date_time   DateTime @default(now())
+  ip_address  String?
+  device      String?
+  browser     String?
+
+  @@map("corporate_audit_logs")
 }
 

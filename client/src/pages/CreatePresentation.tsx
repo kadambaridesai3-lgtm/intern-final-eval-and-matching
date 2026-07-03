@@ -15,8 +15,9 @@ export default function CreatePresentation() {
 
     setLoading(true);
     try {
+      const baseApi = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api`;
       const res = await fetch(
-        '/api/Project-review/presentation',
+        `${baseApi}/Project-review/create`,
         {
           method: 'POST',
           headers: {

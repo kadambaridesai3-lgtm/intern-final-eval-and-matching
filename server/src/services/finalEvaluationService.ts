@@ -16,7 +16,7 @@ export function assignGrade(score: number): string {
 export function assignRemarks(grade: string): string {
   switch (grade) {
     case 'Outstanding':
-      return 'Recommended for PPO / Future Opportunities';
+      return 'Recommended for PPO';
     case 'Excellent':
       return 'Strong Performer';
     case 'Very Good':
@@ -24,7 +24,7 @@ export function assignRemarks(grade: string): string {
     case 'Good':
       return 'Meets Expectations';
     case 'Satisfactory':
-      return 'Needs Development';
+      return 'Needs Improvement';
     case 'Needs Improvement':
       return 'Performance Review Required';
     default:
@@ -57,18 +57,28 @@ export async function getProjectScore(internId: string, pNo?: string | null, cui
 
 // ── Department/Role Requirement Helper ────────────────────────────────────────
 
-export function requiresProjectReview(intern: { department?: string | null; branch?: string | null; preferred_domain?: string | null }): boolean {
+export function requiresProjectReview(intern: { project_required?: string | null; department?: string | null; branch?: string | null; preferred_domain?: string | null }): boolean {
   const nonProjectKeywords = ['support', 'operations', 'documentation', 'training'];
   
   const dept = (intern.department || '').toLowerCase();
   const branch = (intern.branch || '').toLowerCase();
   const domain = (intern.preferred_domain || '').toLowerCase();
   
-  return !nonProjectKeywords.some(keyword => 
+  const isNonProject = nonProjectKeywords.some(keyword => 
     dept.includes(keyword) || 
     branch.includes(keyword) || 
     domain.includes(keyword)
   );
+
+  if (isNonProject) {
+    return false;
+  }
+
+  if (intern.project_required !== undefined && intern.project_required !== null && intern.project_required !== '') {
+    return intern.project_required.toLowerCase() === 'yes';
+  }
+
+  return true;
 }
 
 // ── Final Score Calculation ──────────────────────────────────────────────────
@@ -77,15 +87,21 @@ export function calculateFinalInternshipScore(
   projectScore: number | null,
   attendanceScore: number,
   guideScore: number,
-  requiresProject: boolean
+  isProjectRequired: boolean
 ): number | null {
-  if (requiresProject) {
-    if (projectScore === null) return null;
-    const score = (projectScore * 0.65) + (guideScore * 0.25) + (attendanceScore * 0.10);
-    return Math.round(score * 100) / 100;
+  const aScore = attendanceScore ?? 0;
+  const gScore = guideScore ?? 0;
+
+  if (isProjectRequired) {
+    if (projectScore === null || projectScore === undefined) {
+      return null; // Missing required project score
+    }
+    const score = (projectScore * 0.65) + (gScore * 0.25) + (aScore * 0.10);
+    return isNaN(score) ? 0 : Math.round(score * 100) / 100;
   } else {
-    const score = (guideScore * 0.70) + (attendanceScore * 0.30);
-    return Math.round(score * 100) / 100;
+    // Method 2 (No Project Required)
+    const score = (gScore * 0.70) + (aScore * 0.30);
+    return isNaN(score) ? 0 : Math.round(score * 100) / 100;
   }
 }
 
@@ -94,8 +110,14 @@ export function calculateFinalInternshipScore(
 export async function generateAllFinalEvaluations(reviewId?: string): Promise<any[]> {
   console.log('[FinalEval] Generating all final evaluations for all interns');
 
-  // Get all interns in the system
-  const interns = await prisma.intern.findMany();
+  // Get only interns whose status is Applied, Matched, Assigned, Ongoing, Completed
+  const interns = await prisma.intern.findMany({
+    where: {
+      status: {
+        in: ['Applied', 'Matched', 'Assigned', 'Ongoing', 'Completed'],
+      },
+    },
+  });
   const evaluations: any[] = [];
 
   for (const intern of interns) {
@@ -115,14 +137,12 @@ export async function generateAllFinalEvaluations(reviewId?: string): Promise<an
     const aScore = attendance?.attendance_score ?? 0;
     const gScore = guide?.guide_score ?? 0;
 
-    const requiresProject = requiresProjectReview(intern);
-    const finalScore = calculateFinalInternshipScore(projectScore, aScore, gScore, requiresProject);
+    const isProjectRequired = requiresProjectReview(intern);
+    const finalScore = calculateFinalInternshipScore(projectScore, aScore, gScore, isProjectRequired);
 
     let grade = "";
     let remarks = "";
-    if (requiresProject && projectScore === null) {
-      remarks = "Pending Project Review";
-    } else if (finalScore !== null) {
+    if (finalScore !== null) {
       grade = assignGrade(finalScore);
       remarks = assignRemarks(grade);
     }
@@ -157,6 +177,7 @@ export async function generateAllFinalEvaluations(reviewId?: string): Promise<an
               department: true,
               branch: true,
               preferred_domain: true,
+              project_required: true,
               attendance_summaries: {
                 orderBy: { created_at: 'desc' },
                 take: 1,
@@ -190,6 +211,7 @@ export async function generateAllFinalEvaluations(reviewId?: string): Promise<an
               department: true,
               branch: true,
               preferred_domain: true,
+              project_required: true,
               attendance_summaries: {
                 orderBy: { created_at: 'desc' },
                 take: 1,
@@ -209,21 +231,18 @@ export async function generateAllFinalEvaluations(reviewId?: string): Promise<an
     const hasAttendance = evaluation.intern.attendance_summaries.length > 0;
     
     let status = 'Complete';
-    if (requiresProject && projectScore === null) {
-      status = 'Pending Project Review';
-    } else {
-      const missing: string[] = [];
-      if (!hasGuide) missing.push('Guide Feedback');
-      if (!hasAttendance) missing.push('Attendance');
-      
-      if (missing.length > 0) {
-        status = `Pending ${missing.join(' & ')}`;
-      }
+    const missing: string[] = [];
+    if (!hasGuide) missing.push('Guide Feedback');
+    if (!hasAttendance) missing.push('Attendance');
+    if (isProjectRequired && projectScore === null) missing.push('Project Review');
+    
+    if (missing.length > 0) {
+      status = `Pending ${missing.join(' & ')}`;
     }
 
     evaluations.push({
       ...evaluation,
-      evaluation_method: requiresProject ? 'Project + Guide + Attendance' : 'Guide + Attendance',
+      evaluation_method: isProjectRequired ? 'Project + Guide + Attendance' : 'Guide + Attendance',
       evaluation_status: status,
     });
   }
@@ -261,6 +280,11 @@ export async function getAllFinalEvaluations(reviewId?: string) {
   const evaluations = await prisma.finalInternshipEvaluation.findMany({
     where: {
       review_id: null,
+      intern: {
+        status: {
+          in: ['Applied', 'Matched', 'Assigned', 'Ongoing', 'Completed'],
+        },
+      },
     },
     include: {
       intern: {
@@ -270,6 +294,8 @@ export async function getAllFinalEvaluations(reviewId?: string) {
           department: true,
           branch: true,
           preferred_domain: true,
+          project_required: true,
+          status: true,
           attendance_summaries: {
             orderBy: { created_at: 'desc' },
             take: 1,
@@ -291,26 +317,24 @@ export async function getAllFinalEvaluations(reviewId?: string) {
   });
 
   const mapped = evaluations.map(e => {
-    const reqProj = requiresProjectReview(e.intern);
+    const isProjectRequired = requiresProjectReview(e.intern);
+    const hasProject = e.project_score !== null;
     const hasGuide = e.intern.guide_feedbacks.length > 0;
     const hasAttendance = e.intern.attendance_summaries.length > 0;
     
     let status = 'Complete';
-    if (reqProj && e.project_score === null) {
-      status = 'Pending Project Review';
-    } else {
-      const missing: string[] = [];
-      if (!hasGuide) missing.push('Guide Feedback');
-      if (!hasAttendance) missing.push('Attendance');
-      
-      if (missing.length > 0) {
-        status = `Pending ${missing.join(' & ')}`;
-      }
+    const missing: string[] = [];
+    if (!hasGuide) missing.push('Guide Feedback');
+    if (!hasAttendance) missing.push('Attendance');
+    if (isProjectRequired && !hasProject) missing.push('Project Review');
+    
+    if (missing.length > 0) {
+      status = `Pending ${missing.join(' & ')}`;
     }
 
     return {
       ...e,
-      evaluation_method: reqProj ? 'Project + Guide + Attendance' : 'Guide + Attendance',
+      evaluation_method: isProjectRequired ? 'Project + Guide + Attendance' : 'Guide + Attendance',
       evaluation_status: status,
     };
   });
@@ -330,6 +354,11 @@ export async function getFinalEvaluationByInternId(internId: string, reviewId?: 
     where: {
       intern_id: internId,
       review_id: null,
+      intern: {
+        status: {
+          in: ['Applied', 'Matched', 'Assigned', 'Ongoing', 'Completed'],
+        },
+      },
     },
     include: {
       intern: {
@@ -339,6 +368,8 @@ export async function getFinalEvaluationByInternId(internId: string, reviewId?: 
           department: true,
           branch: true,
           preferred_domain: true,
+          project_required: true,
+          status: true,
           attendance_summaries: {
             orderBy: { created_at: 'desc' },
             take: 1,
@@ -360,26 +391,24 @@ export async function getFinalEvaluationByInternId(internId: string, reviewId?: 
 
   if (!evaluation) return null;
 
-  const reqProj = requiresProjectReview(evaluation.intern);
+  const isProjectRequired = requiresProjectReview(evaluation.intern);
+  const hasProject = evaluation.project_score !== null;
   const hasGuide = evaluation.intern.guide_feedbacks.length > 0;
   const hasAttendance = evaluation.intern.attendance_summaries.length > 0;
   
   let status = 'Complete';
-  if (reqProj && evaluation.project_score === null) {
-    status = 'Pending Project Review';
-  } else {
-    const missing: string[] = [];
-    if (!hasGuide) missing.push('Guide Feedback');
-    if (!hasAttendance) missing.push('Attendance');
-    
-    if (missing.length > 0) {
-      status = `Pending ${missing.join(' & ')}`;
-    }
+  const missing: string[] = [];
+  if (!hasGuide) missing.push('Guide Feedback');
+  if (!hasAttendance) missing.push('Attendance');
+  if (isProjectRequired && !hasProject) missing.push('Project Review');
+  
+  if (missing.length > 0) {
+    status = `Pending ${missing.join(' & ')}`;
   }
 
   return {
     ...evaluation,
-    evaluation_method: reqProj ? 'Project + Guide + Attendance' : 'Guide + Attendance',
+    evaluation_method: isProjectRequired ? 'Project + Guide + Attendance' : 'Guide + Attendance',
     evaluation_status: status,
   };
 }

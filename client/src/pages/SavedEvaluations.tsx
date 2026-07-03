@@ -282,29 +282,35 @@ export default function SavedEvaluations() {
 
               <button
                 onClick={() => {
-                  // Export functionality
-                  const csvContent = [
-                    ['Batch', 'Presenter ID', 'Presenter Name', 'Evaluator ID', 'Role', 'Score', 'Date'].join(','),
-                    ...filteredEvaluations.map(e =>
-                      [
-                        getReviewTitle(e.review_id),
-                        e.presenter_id,
-                        e.presenter_name,
-                        e.evaluator_id,
-                        e.is_hr ? 'HR' : 'Peer',
-                        e.total_marks,
-                        new Date(e.created_at).toISOString()
-                      ].join(',')
-                    )
-                  ].join('\n');
+                  try {
+                    // Export functionality
+                    const csvContent = [
+                      ['Batch', 'Presenter ID', 'Presenter Name', 'Evaluator ID', 'Role', 'Score', 'Date'].join(','),
+                      ...filteredEvaluations.map(e =>
+                        [
+                          getReviewTitle(e.review_id),
+                          e.presenter_id,
+                          e.presenter_name,
+                          e.evaluator_id,
+                          e.is_hr ? 'HR' : 'Peer',
+                          e.total_marks,
+                          new Date(e.created_at).toISOString()
+                        ].join(',')
+                      )
+                    ].join('\n');
 
-                  const blob = new Blob([csvContent], { type: 'text/csv' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `evaluations_${new Date().toISOString().split('T')[0]}.csv`;
-                  a.click();
-                  window.URL.revokeObjectURL(url);
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `evaluations_${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                  } catch (err) {
+                    alert("Export Failed: Unable to generate CSV file. Please try again.");
+                  }
                 }}
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
               >

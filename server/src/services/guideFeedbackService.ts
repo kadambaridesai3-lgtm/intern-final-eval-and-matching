@@ -3,90 +3,116 @@ import XLSX from 'xlsx';
 
 const prisma = getPrisma();
 
+// ── Q-Number to DB field mapping ──────────────────────────────────────────────
+// The Tata Motors Guide Feedback Excel has Q5–Q19 Score columns.
+// Each maps to an existing DB field in GuideFeedback.
+
+export const Q_TO_FIELD: Record<string, string> = {
+  'Q5':  'task_completion',
+  'Q6':  'quality_of_work',
+  'Q7':  'problem_solving',
+  'Q8':  'initiative_innovation',
+  'Q9':  'learning_adaptability',
+  'Q10': 'attendance_punctuality',   // Attendance — excluded from Guide Score
+  'Q11': 'communication',
+  'Q12': 'professionalism_ethics',
+  'Q13': 'respect_authority',
+  'Q14': 'accountability',
+  'Q15': 'teamwork',
+  'Q16': 'conflict_resolution',
+  'Q17': 'empathy',
+  'Q18': 'leadership_potential',
+  'Q19': 'conflict_handling',
+};
+
+// ── Score helpers ─────────────────────────────────────────────────────────────
+
 function toNumericScore(val: any): number {
-  if (val === undefined || val === null || val === '') return 3; // Default to Average (3)
+  if (val === undefined || val === null || val === '') return 0;
   const s = String(val).trim().toLowerCase();
-  if (s === '5' || s.startsWith('best') || s.startsWith('excellent')) return 5;
-  if (s === '4' || s.startsWith('good')) return 4;
-  if (s === '3' || s.startsWith('average') || s.startsWith('meet')) return 3;
-  if (s === '2' || s.startsWith('poor') || s.startsWith('below')) return 2;
-  if (s === '1' || s.startsWith('worst') || s.startsWith('needs')) return 1;
+  // Direct numeric
   const parsed = parseInt(s);
-  if (!isNaN(parsed) && parsed >= 1 && parsed <= 5) return parsed;
-  return 3; // default fallback
+  if (!isNaN(parsed) && parsed >= 0) return parsed;
+  // Text-based (legacy support)
+  if (s.startsWith('best') || s.startsWith('excellent')) return 5;
+  if (s.startsWith('good')) return 4;
+  if (s.startsWith('average') || s.startsWith('meet')) return 3;
+  if (s.startsWith('poor') || s.startsWith('below')) return 2;
+  if (s.startsWith('worst') || s.startsWith('needs')) return 1;
+  return 0;
 }
 
+/**
+ * Calculate guide feedback scores from the 15 dimension values (Q5–Q19).
+ *
+ * - total_marks = sum of all 15 scores (Q5–Q19), max 75
+ * - percentage  = (total_marks / 75) × 100
+ * - guide_score = (sum of Q5–Q9 + Q11–Q19, i.e. excluding Q10) / 70 × 100
+ *
+ * Q10 (attendance_punctuality) is stored but NOT included in guide_score.
+ */
 export function calculateGuideFeedbackScores(data: {
-  discipline: number;
-  learning_ability: number;
-  teamwork: number;
-  communication: number;
-  task_completion: number;
-  quality_of_work?: number;
-  problem_solving?: number;
-  initiative_innovation?: number;
-  learning_adaptability?: number;
-  attendance_punctuality?: number;
-  professionalism_ethics?: number;
-  respect_authority?: number;
-  accountability?: number;
-  conflict_resolution?: number;
-  empathy?: number;
-  leadership_potential?: number;
-  conflict_handling?: number;
+  task_completion: number;      // Q5
+  quality_of_work: number;      // Q6
+  problem_solving: number;      // Q7
+  initiative_innovation: number; // Q8
+  learning_adaptability: number; // Q9
+  attendance_punctuality: number; // Q10 — excluded from guide_score
+  communication: number;        // Q11
+  professionalism_ethics: number; // Q12
+  respect_authority: number;    // Q13
+  accountability: number;       // Q14
+  teamwork: number;             // Q15
+  conflict_resolution: number;  // Q16
+  empathy: number;              // Q17
+  leadership_potential: number; // Q18
+  conflict_handling: number;    // Q19
+  // Legacy fields mapped through
+  discipline?: number;
+  learning_ability?: number;
 }) {
-  // Convert all to numeric (in case they are passed as raw data or 1-5 / 1-10)
-  const task_completion = toNumericScore(data.task_completion);
-  const quality_of_work = toNumericScore(data.quality_of_work ?? 3);
-  const problem_solving = toNumericScore(data.problem_solving ?? 3);
-  const initiative_innovation = toNumericScore(data.initiative_innovation ?? 3);
-  const learning_adaptability = toNumericScore(data.learning_adaptability ?? data.learning_ability ?? 3);
-  const communication = toNumericScore(data.communication);
-  const professionalism_ethics = toNumericScore(data.professionalism_ethics ?? data.discipline ?? 3);
-  const respect_authority = toNumericScore(data.respect_authority ?? 3);
-  const accountability = toNumericScore(data.accountability ?? 3);
-  const teamwork = toNumericScore(data.teamwork);
-  const conflict_resolution = toNumericScore(data.conflict_resolution ?? 3);
-  const empathy = toNumericScore(data.empathy ?? 3);
-  const leadership_potential = toNumericScore(data.leadership_potential ?? 3);
-  const conflict_handling = toNumericScore(data.conflict_handling ?? 3);
-  const attendance_punctuality = toNumericScore(data.attendance_punctuality ?? 3);
+  const q5  = data.task_completion;
+  const q6  = data.quality_of_work;
+  const q7  = data.problem_solving;
+  const q8  = data.initiative_innovation;
+  const q9  = data.learning_adaptability;
+  const q10 = data.attendance_punctuality;
+  const q11 = data.communication;
+  const q12 = data.professionalism_ethics;
+  const q13 = data.respect_authority;
+  const q14 = data.accountability;
+  const q15 = data.teamwork;
+  const q16 = data.conflict_resolution;
+  const q17 = data.empathy;
+  const q18 = data.leadership_potential;
+  const q19 = data.conflict_handling;
 
-  // Obtained marks sum the 14 non-attendance dimensions
-  const obtainedMarks =
-    task_completion +
-    quality_of_work +
-    problem_solving +
-    initiative_innovation +
-    learning_adaptability +
-    communication +
-    professionalism_ethics +
-    respect_authority +
-    accountability +
-    teamwork +
-    conflict_resolution +
-    empathy +
-    leadership_potential +
-    conflict_handling;
+  // Total = sum of all 15 (max 75)
+  const total_marks = q5 + q6 + q7 + q8 + q9 + q10 + q11 + q12 + q13 + q14 + q15 + q16 + q17 + q18 + q19;
 
-  // Maximum score for the 14 dimensions is 14 * 5 = 70
-  const guide_score = (obtainedMarks / 70) * 100;
+  // Percentage = (Total / 75) × 100
+  const percentage = (total_marks / 75) * 100;
 
-  // Total marks is out of 75 (15 * 5) including attendance_punctuality for reference
-  const total_marks = obtainedMarks + attendance_punctuality;
+  // Guide Score = (sum excluding Q10) / 70 × 100
+  const obtainedMarksExclQ10 = q5 + q6 + q7 + q8 + q9 + q11 + q12 + q13 + q14 + q15 + q16 + q17 + q18 + q19;
+  const guide_score = (obtainedMarksExclQ10 / 70) * 100;
 
-  console.log('[GuideFeedback] obtained:', obtainedMarks, 'guide_score:', guide_score, 'total_marks:', total_marks);
+  console.log('[GuideFeedback] total:', total_marks, 'percentage:', percentage.toFixed(2), 'guide_score:', guide_score.toFixed(2), '(Q10 excluded)');
 
   return {
     total_marks,
+    percentage: Math.round(percentage * 100) / 100,
     guide_score: Math.round(guide_score * 100) / 100,
   };
 }
+
+// ── Upsert ────────────────────────────────────────────────────────────────────
 
 export async function upsertGuideFeedback(data: {
   intern_id: string;
   review_id?: string;
   guide_name?: string;
+  department?: string;
   discipline?: number;
   learning_ability?: number;
   teamwork: number;
@@ -105,28 +131,27 @@ export async function upsertGuideFeedback(data: {
   leadership_potential?: number;
   conflict_handling?: number;
 }) {
-  // Backwards compatibility mapper for standard 5 fields
   const parsed = {
-    discipline: toNumericScore(data.discipline ?? 3),
-    learning_ability: toNumericScore(data.learning_ability ?? 3),
+    discipline: toNumericScore(data.discipline ?? 0),
+    learning_ability: toNumericScore(data.learning_ability ?? 0),
     teamwork: toNumericScore(data.teamwork),
     communication: toNumericScore(data.communication),
     task_completion: toNumericScore(data.task_completion),
-    quality_of_work: toNumericScore(data.quality_of_work ?? 3),
-    problem_solving: toNumericScore(data.problem_solving ?? 3),
-    initiative_innovation: toNumericScore(data.initiative_innovation ?? 3),
-    learning_adaptability: toNumericScore(data.learning_adaptability ?? data.learning_ability ?? 3),
-    attendance_punctuality: toNumericScore(data.attendance_punctuality ?? 3),
-    professionalism_ethics: toNumericScore(data.professionalism_ethics ?? data.discipline ?? 3),
-    respect_authority: toNumericScore(data.respect_authority ?? 3),
-    accountability: toNumericScore(data.accountability ?? 3),
-    conflict_resolution: toNumericScore(data.conflict_resolution ?? 3),
-    empathy: toNumericScore(data.empathy ?? 3),
-    leadership_potential: toNumericScore(data.leadership_potential ?? 3),
-    conflict_handling: toNumericScore(data.conflict_handling ?? 3),
+    quality_of_work: toNumericScore(data.quality_of_work ?? 0),
+    problem_solving: toNumericScore(data.problem_solving ?? 0),
+    initiative_innovation: toNumericScore(data.initiative_innovation ?? 0),
+    learning_adaptability: toNumericScore(data.learning_adaptability ?? 0),
+    attendance_punctuality: toNumericScore(data.attendance_punctuality ?? 0),
+    professionalism_ethics: toNumericScore(data.professionalism_ethics ?? 0),
+    respect_authority: toNumericScore(data.respect_authority ?? 0),
+    accountability: toNumericScore(data.accountability ?? 0),
+    conflict_resolution: toNumericScore(data.conflict_resolution ?? 0),
+    empathy: toNumericScore(data.empathy ?? 0),
+    leadership_potential: toNumericScore(data.leadership_potential ?? 0),
+    conflict_handling: toNumericScore(data.conflict_handling ?? 0),
   };
 
-  const { total_marks, guide_score } = calculateGuideFeedbackScores(parsed);
+  const { total_marks, percentage, guide_score } = calculateGuideFeedbackScores(parsed);
 
   console.log('[GuideFeedback] Upserting for intern:', data.intern_id, 'review_id:', data.review_id);
 
@@ -137,30 +162,36 @@ export async function upsertGuideFeedback(data: {
     }
   });
 
+  const writeData = {
+    guide_name: data.guide_name || null,
+    department: data.department || '',
+    discipline: parsed.discipline,
+    learning_ability: parsed.learning_ability,
+    teamwork: parsed.teamwork,
+    communication: parsed.communication,
+    task_completion: parsed.task_completion,
+    quality_of_work: parsed.quality_of_work,
+    problem_solving: parsed.problem_solving,
+    initiative_innovation: parsed.initiative_innovation,
+    learning_adaptability: parsed.learning_adaptability,
+    attendance_punctuality: parsed.attendance_punctuality,
+    professionalism_ethics: parsed.professionalism_ethics,
+    respect_authority: parsed.respect_authority,
+    accountability: parsed.accountability,
+    conflict_resolution: parsed.conflict_resolution,
+    empathy: parsed.empathy,
+    leadership_potential: parsed.leadership_potential,
+    conflict_handling: parsed.conflict_handling,
+    total_marks,
+    percentage,
+    guide_score,
+  };
+
   if (existing) {
     return prisma.guideFeedback.update({
       where: { id: existing.id },
       data: {
-        guide_name: data.guide_name || null,
-        discipline: parsed.discipline,
-        learning_ability: parsed.learning_ability,
-        teamwork: parsed.teamwork,
-        communication: parsed.communication,
-        task_completion: parsed.task_completion,
-        quality_of_work: parsed.quality_of_work,
-        problem_solving: parsed.problem_solving,
-        initiative_innovation: parsed.initiative_innovation,
-        learning_adaptability: parsed.learning_adaptability,
-        attendance_punctuality: parsed.attendance_punctuality,
-        professionalism_ethics: parsed.professionalism_ethics,
-        respect_authority: parsed.respect_authority,
-        accountability: parsed.accountability,
-        conflict_resolution: parsed.conflict_resolution,
-        empathy: parsed.empathy,
-        leadership_potential: parsed.leadership_potential,
-        conflict_handling: parsed.conflict_handling,
-        total_marks,
-        guide_score,
+        ...writeData,
         updated_at: new Date(),
       }
     });
@@ -169,30 +200,13 @@ export async function upsertGuideFeedback(data: {
       data: {
         intern_id: data.intern_id,
         review_id: data.review_id || null,
-        guide_name: data.guide_name || null,
-        discipline: parsed.discipline,
-        learning_ability: parsed.learning_ability,
-        teamwork: parsed.teamwork,
-        communication: parsed.communication,
-        task_completion: parsed.task_completion,
-        quality_of_work: parsed.quality_of_work,
-        problem_solving: parsed.problem_solving,
-        initiative_innovation: parsed.initiative_innovation,
-        learning_adaptability: parsed.learning_adaptability,
-        attendance_punctuality: parsed.attendance_punctuality,
-        professionalism_ethics: parsed.professionalism_ethics,
-        respect_authority: parsed.respect_authority,
-        accountability: parsed.accountability,
-        conflict_resolution: parsed.conflict_resolution,
-        empathy: parsed.empathy,
-        leadership_potential: parsed.leadership_potential,
-        conflict_handling: parsed.conflict_handling,
-        total_marks,
-        guide_score,
+        ...writeData,
       }
     });
   }
 }
+
+// ── Read helpers ──────────────────────────────────────────────────────────────
 
 export async function getAllGuideFeedbacks(reviewId?: string) {
   const where: any = {};
@@ -250,72 +264,102 @@ export async function deleteGuideFeedback(internId: string, reviewId?: string) {
 }
 
 export interface RawFeedbackRow {
-  intern_id: string;
   p_no: string;
-  intern_name: string;
-  task_completion: any;
-  quality_of_work: any;
-  problem_solving: any;
-  initiative_innovation: any;
-  learning_adaptability: any;
-  communication: any;
-  professionalism_ethics: any;
-  respect_authority: any;
-  accountability: any;
-  teamwork: any;
-  conflict_resolution: any;
-  empathy: any;
-  leadership_potential: any;
-  conflict_handling: any;
-  attendance_punctuality?: any;
+  candidate_name: string;
+  guide_name: string;
+  department: string;
+  scores: Record<string, number | null>;
+  excel_total: number;
+  excel_percentage: number;
+  rowNum: number;
 }
 
-export function parseGuideFeedbackExcel(buffer: Buffer): RawFeedbackRow[] {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
+  const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
   console.log('[GuideFeedback] Parsed', rows.length, 'rows from Excel');
 
+  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
+    const rowKeys = Object.keys(row);
+    const matchKey = rowKeys.find(k => 
+      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+    return matchKey !== undefined ? row[matchKey] : '';
+  };
+
   const parsed: RawFeedbackRow[] = [];
-  for (const row of rows) {
-    const keys = Object.keys(row);
-    const getVal = (colNames: string[]) => {
-      const matchKey = keys.find(k => colNames.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, '')));
-      return matchKey ? row[matchKey] : '';
-    };
 
-    const internId = String(getVal(['Intern ID', 'internid', 'id'])).trim();
-    const pNo = String(getVal(['P No', 'pno', 'p_no'])).trim();
-    const internName = String(getVal(['Intern Name', 'name', 'internname'])).trim();
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNum = i + 2;
 
-    if (!internId && !pNo) {
-      console.log('[GuideFeedback] Skipping row — no ID or P No');
+    const isEmptyRow = Object.values(row).every(val => val === undefined || val === null || String(val).trim() === '');
+    if (isEmptyRow) {
       continue;
     }
 
+    const p_no = String(pickCell(row, ['P.No', 'P No', 'p_no', 'P.no', 'P.No.'])).trim();
+    const candidate_name = String(pickCell(row, ['Intern Name', 'Candidate Name', 'Name'])).trim();
+    const guide_name = String(pickCell(row, ['Guide Name'])).trim();
+    const department = String(pickCell(row, ['Dept.Name', 'Department', 'Department Name'])).trim();
+
+    const scores: Record<string, number | null> = {};
+    for (let q = 5; q <= 19; q++) {
+      const val = pickCell(row, [`Q${q} Score`, `${q} Ans`, `Q${q}`, `${q}Ans`, `${q}.Ans`, `${q} ans`]);
+      if (val === undefined || val === null || val === '') {
+        scores[`Q${q}`] = null;
+      } else {
+        const num = Number(val);
+        scores[`Q${q}`] = isNaN(num) ? null : num;
+      }
+    }
+
+    const excel_total = Number(pickCell(row, ['Total']) || 0);
+    const excel_percentage = Number(pickCell(row, ['Percentage']) || 0);
+
     parsed.push({
-      intern_id: internId,
-      p_no: pNo,
-      intern_name: internName,
-      task_completion: getVal(['Task Completion', 'taskcompletion']),
-      quality_of_work: getVal(['Quality of Work', 'qualityofwork']),
-      problem_solving: getVal(['Problem Solving', 'problemsolving']),
-      initiative_innovation: getVal(['Initiative & Innovation', 'Initiative and Innovation', 'initiativeinnovation']),
-      learning_adaptability: getVal(['Learning & Adaptability', 'Learning and Adaptability', 'learningadaptability']),
-      communication: getVal(['Communication']),
-      professionalism_ethics: getVal(['Professionalism & Ethics', 'Professionalism and Ethics', 'professionalismethics']),
-      respect_authority: getVal(['Respect for Authority', 'respectauthority']),
-      accountability: getVal(['Accountability']),
-      teamwork: getVal(['Teamwork']),
-      conflict_resolution: getVal(['Conflict Resolution', 'conflictresolution']),
-      empathy: getVal(['Empathy']),
-      leadership_potential: getVal(['Leadership Potential', 'leadershippotential']),
-      conflict_handling: getVal(['Conflict Handling', 'conflicthandling']),
-      attendance_punctuality: getVal(['Attendance & Punctuality', 'Attendance and Punctuality', 'attendancepunctuality', 'attendance']),
+      p_no,
+      candidate_name,
+      guide_name,
+      department,
+      scores,
+      excel_total,
+      excel_percentage,
+      rowNum
     });
   }
 
   return parsed;
+}
+
+// ── Sample Excel Generator ────────────────────────────────────────────────────
+
+export function generateSampleExcel(): Buffer {
+  const wb = XLSX.utils.book_new();
+
+  const headers = [
+    'Guide Name', 'Dept.Name', 'P.No', 'Intern Name',
+    'Q5 Score', 'Q6 Score', 'Q7 Score', 'Q8 Score', 'Q9 Score', 'Q10 Score',
+    'Q11 Score', 'Q12 Score', 'Q13 Score', 'Q14 Score', 'Q15 Score', 'Q16 Score',
+    'Q17 Score', 'Q18 Score', 'Q19 Score', 'Total', 'Percentage'
+  ];
+
+  // Sample row
+  const sampleRow = [
+    'Dr. Smith', 'Mechanical Engineering', '12345', 'John Doe',
+    4, 5, 3, 4, 5, 4, 3, 4, 5, 4, 3, 4, 5, 4, 3,
+    62, 82.67
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
+
+  // Set column widths
+  ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 12) }));
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Guide Feedback');
+
+  return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
 }

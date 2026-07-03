@@ -32,6 +32,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/interns" element={<InternsList />} />
           <Route path="/interns/new" element={<AddIntern />} />
+          <Route path="/interns/:id/edit" element={<AddIntern />} />
           <Route path="/interns/:id" element={<InternDetail />} />
           <Route path="/guides" element={<GuidesList />} />
           <Route path="/guides/new" element={<AddEditGuide />} />

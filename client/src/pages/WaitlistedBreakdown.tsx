@@ -42,12 +42,23 @@ export default function WaitlistedBreakdown() {
   />
 </div>
 <button
-  onClick={() =>
-    window.open(
-      '/api/dashboard/waitlisted-download',
-      '_blank'
-    )
-  }
+  onClick={async () => {
+    try {
+      const res = await fetch('/api/dashboard/waitlisted-download');
+      if (!res.ok) throw new Error('Failed to download file');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'waitlisted-interns.xlsx';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Download could not be started. Please verify browser download permissions.");
+    }
+  }}
   className="btn-primary"
 >
   Download Participants
