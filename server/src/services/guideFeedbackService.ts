@@ -301,14 +301,15 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
       continue;
     }
 
-    const p_no = String(pickCell(row, ['P.No', 'P No', 'p_no', 'P.no', 'P.No.'])).trim();
-    const candidate_name = String(pickCell(row, ['Intern Name', 'Candidate Name', 'Name'])).trim();
+    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
+    const candidate_name = String(pickCell(row, ['Candidate Name', 'Intern Name', 'Name'])).trim();
     const guide_name = String(pickCell(row, ['Guide Name'])).trim();
-    const department = String(pickCell(row, ['Dept.Name', 'Department', 'Department Name'])).trim();
+    const department = String(pickCell(row, ['Department', 'Dept.Name', 'Department Name'])).trim();
 
     const scores: Record<string, number | null> = {};
     for (let q = 5; q <= 19; q++) {
-      const val = pickCell(row, [`Q${q} Score`, `${q} Ans`, `Q${q}`, `${q}Ans`, `${q}.Ans`, `${q} ans`]);
+      // Accept new standard name (Q5) first, then legacy names (Q5 Score, Q5 Ans, etc.)
+      const val = pickCell(row, [`Q${q}`, `Q${q} Score`, `${q} Ans`, `${q}Ans`, `${q}.Ans`, `${q} ans`]);
       if (val === undefined || val === null || val === '') {
         scores[`Q${q}`] = null;
       } else {
@@ -340,18 +341,19 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
 export function generateSampleExcel(): Buffer {
   const wb = XLSX.utils.book_new();
 
+  // Standard corporate headers per module spec
   const headers = [
-    'Guide Name', 'Dept.Name', 'P.No', 'Intern Name',
-    'Q5 Score', 'Q6 Score', 'Q7 Score', 'Q8 Score', 'Q9 Score', 'Q10 Score',
-    'Q11 Score', 'Q12 Score', 'Q13 Score', 'Q14 Score', 'Q15 Score', 'Q16 Score',
-    'Q17 Score', 'Q18 Score', 'Q19 Score', 'Total', 'Percentage'
+    'P No', 'Candidate Name', 'Guide Name', 'Department',
+    'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10',
+    'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16',
+    'Q17', 'Q18', 'Q19', 'Guide Score', 'Remarks'
   ];
 
   // Sample row
   const sampleRow = [
-    'Dr. Smith', 'Mechanical Engineering', '12345', 'John Doe',
+    '12345', 'John Doe', 'Dr. Smith', 'Mechanical Engineering',
     4, 5, 3, 4, 5, 4, 3, 4, 5, 4, 3, 4, 5, 4, 3,
-    62, 82.67
+    82.67, 'Good Performer'
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);

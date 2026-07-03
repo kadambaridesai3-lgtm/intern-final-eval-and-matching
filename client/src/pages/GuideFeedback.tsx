@@ -383,7 +383,7 @@ export default function GuideFeedbackPage() {
             <div>
               <h3 className="font-bold text-gray-800">📂 Guide Feedback Excel Upload</h3>
               <p className="text-xs text-gray-500 mt-1">
-                Upload the Tata Motors Guide Feedback Excel file. Interns are matched by <strong>P.No</strong> only.
+                Upload the Tata Motors Guide Feedback Excel file. Interns are matched by <strong>P No</strong> only.
               </p>
             </div>
             <div className="mt-3 space-y-2">
@@ -481,7 +481,7 @@ export default function GuideFeedbackPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 gap-3.5">
                 <div>
-                  <label className="label">P.No *</label>
+                  <label className="label">P No *</label>
                   <input
                     type="text"
                     value={form.intern_id}
@@ -630,7 +630,7 @@ export default function GuideFeedbackPage() {
                     <tr>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Intern Details</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Guide</th>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Dept.</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Total</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Percentage</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Q10</th>
@@ -643,7 +643,7 @@ export default function GuideFeedbackPage() {
                       <tr key={fb.id} className="hover:bg-gray-50/50 transition">
                         <td className="px-4 py-3">
                           <p className="font-semibold text-gray-800">{fb.intern_name || ''}</p>
-                          <p className="text-xs text-gray-500 font-mono">{fb.p_no ? `P.No: ${fb.p_no}` : ''}</p>
+                          <p className="text-xs text-gray-500 font-mono">{fb.p_no ? `P No: ${fb.p_no}` : ''}</p>
                         </td>
                         <td className="px-4 py-3">
                           <p className="text-gray-600 text-xs">{fb.guide_name || ''}</p>

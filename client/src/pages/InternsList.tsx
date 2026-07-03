@@ -48,19 +48,19 @@ export default function InternsList() {
   const columns: Column<Intern>[] = [
     {
       key: 'p_no',
-      label: 'P.No',
+      label: 'P No',
       sortValue: (r) => r.p_no ?? '',
       render: (r) => <span className="font-medium text-tata-navy">{r.p_no}</span>,
     },
     {
       key: 'full_name',
-      label: 'Name',
+      label: 'Candidate Name',
       sortValue: (r) => r.full_name,
       render: (r) => <span className="font-medium text-tata-navy">{r.full_name}</span>,
     },
     {
       key: 'intern_type',
-      label: 'Type',
+      label: 'Intern Type',
       sortValue: (r) => r.intern_type,
       render: (r) => (
         <span className="text-xs px-2 py-0.5 rounded bg-tata-light text-tata-navy font-medium">
@@ -70,7 +70,7 @@ export default function InternsList() {
     },
     {
       key: 'branch',
-      label: 'Stream',
+      label: 'Branch',
       sortValue: (r) => r.branch,
       render: (r) => r.branch,
     },
@@ -108,19 +108,19 @@ export default function InternsList() {
     },
     {
       key: 'start_date',
-      label: 'Start Date',
+      label: 'Date of Joining',
       sortValue: (r) => r.start_date,
       render: (r) => new Date(r.start_date).toLocaleDateString('en-IN'),
     },
     {
       key: 'duration_months',
-      label: 'Duration',
+      label: 'Duration (Months)',
       sortValue: (r) => r.duration_months,
       render: (r) => `${r.duration_months}m`,
     },
     {
       key: 'end_date',
-      label: 'End Date',
+      label: 'Date of Leaving',
       sortValue: (r) => r.end_date,
       render: (r) => new Date(r.end_date).toLocaleDateString('en-IN'),
     },
@@ -192,14 +192,14 @@ export default function InternsList() {
               onClick={async () => {
                 try {
                   const baseApi = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api`;
-                  const res = await fetch(`${baseApi}/exports/interns`);
+                  const res = await fetch(`${baseApi}/exports/intern-master`);
                   if (!res.ok) throw new Error('Export failed on backend');
                   const blob = await res.blob();
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
                   const todayStr = new Date().toISOString().split('T')[0];
-                  a.download = `Intern_List_${todayStr}.xlsx`;
+                  a.download = `Intern_Master_${todayStr}.xlsx`;
                   document.body.appendChild(a);
                   a.click();
                   document.body.removeChild(a);
@@ -222,7 +222,7 @@ export default function InternsList() {
           <label className="label">Search</label>
           <input
             className="input w-52"
-            placeholder="Name or skill or P.No"
+            placeholder="Name or skill or P No"
             value={search}
             onChange={(e) => setParam('search', e.target.value)}
           />

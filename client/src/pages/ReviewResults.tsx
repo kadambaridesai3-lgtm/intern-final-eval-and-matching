@@ -321,7 +321,7 @@ export default function ReviewResults() {
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Rank</th>
-                    <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Intern Details</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Candidate Details</th>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">HR Score</th>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Peer Avg</th>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Avg Presentation</th>

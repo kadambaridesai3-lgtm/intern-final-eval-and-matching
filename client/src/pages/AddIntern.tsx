@@ -146,7 +146,7 @@ export default function AddIntern() {
               onChange={(e) => set('p_no', e.target.value)} placeholder="e.g. 106245" required />
           </div>
           <div className="col-span-2">
-            <label className="label" htmlFor="full_name">Full Name *</label>
+            <label className="label" htmlFor="full_name">Candidate Name *</label>
             <input id="full_name" className="input" value={form.full_name}
               onChange={(e) => set('full_name', e.target.value)} placeholder="Arjun Desai" required />
           </div>
@@ -197,7 +197,7 @@ export default function AddIntern() {
               onChange={(e) => set('reference_name', e.target.value)} placeholder="e.g. Dr. A. Sharma" />
           </div>
           <div>
-            <label className="label" htmlFor="branch">Branch / Stream</label>
+            <label className="label" htmlFor="branch">Branch</label>
             <input id="branch" className="input" value={form.branch}
               onChange={(e) => set('branch', e.target.value)} placeholder="Mechanical Engineering" />
           </div>
@@ -235,7 +235,7 @@ export default function AddIntern() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label" htmlFor="preferred_domain">Preferred Domain</label>
+            <label className="label" htmlFor="preferred_domain">Project Domain</label>
             <input id="preferred_domain" className="input" value={form.preferred_domain}
               onChange={(e) => set('preferred_domain', e.target.value)} placeholder="Manufacturing Engineering" />
           </div>
@@ -251,17 +251,17 @@ export default function AddIntern() {
         {/* Internship details */}
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="label" htmlFor="start_date">Start Date</label>
+            <label className="label" htmlFor="start_date">Date of Joining</label>
             <input id="start_date" type="date" className="input" value={form.start_date}
               onChange={(e) => set('start_date', e.target.value)} />
           </div>
           <div>
-            <label className="label" htmlFor="end_date">End Date</label>
+            <label className="label" htmlFor="end_date">Date of Leaving</label>
             <input id="end_date" type="date" className="input" value={form.end_date}
               onChange={(e) => set('end_date', e.target.value)} />
           </div>
           <div>
-            <label className="label" htmlFor="duration_months">Duration (months)</label>
+            <label className="label" htmlFor="duration_months">Duration (Months)</label>
             <input id="duration_months" type="number" min="1" max="24" className="input" value={form.duration_months}
               onChange={(e) => set('duration_months', Number(e.target.value))} />
           </div>

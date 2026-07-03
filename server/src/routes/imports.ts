@@ -74,27 +74,29 @@ router.post('/', upload.single('file'), async (req, res) => {
         continue;
       }
 
-      const full_name = toText(pickCell(row, ['full_name', 'Full Name', 'Name']));
-      const phone = toText(pickCell(row, ['phone', 'Phone'])) || '';
-      const p_no = toText(pickCell(row, ['P.no', 'P No', 'PNo', 'p_no', 'pNo', 'P.No.'])).trim();
+      const full_name = toText(pickCell(row, ['Candidate Name', 'full_name', 'Full Name', 'Name']));
+      const phone = toText(pickCell(row, ['phone', 'Phone', 'Mobile', 'Mobile No'])) || '';
+      const p_no = toText(pickCell(row, ['P No', 'P.no', 'P.No', 'PNo', 'p_no', 'pNo', 'P.No.'])).trim();
 
-      const intern_type = toText(pickCell(row, ['intern_type', 'Bachelor Degree Type', 'Type'])) || 'B.Tech';
-      const college = toText(pickCell(row, ['college', 'College'])) || '';
-      const branch = toText(pickCell(row, ['Bachelor Stream', 'Branch', 'Stream'])) || '';
-      const department = toText(pickCell(row, ['Department Name', 'department', 'Department'])) || '';
+      const intern_type = toText(pickCell(row, ['Intern Type', 'Qualification', 'intern_type', 'Bachelor Degree Type', 'Type'])) || 'B.Tech';
+      const college = toText(pickCell(row, ['College', 'college'])) || '';
+      const branch = toText(pickCell(row, ['Branch', 'Bachelor Stream', 'Stream', 'branch'])) || '';
+      const department = toText(pickCell(row, ['Department', 'Department Name', 'department'])) || '';
       const graduation_year = toNumber(pickCell(row, ['graduation_year', 'Graduation Year']), new Date().getFullYear());
       const rawCgpa = pickCell(row, ['cgpa', 'CGPA', 'Bachelor Percentage']);
       const cgpa = rawCgpa ? Number(String(rawCgpa).replace('%', '').replace(',', '.').trim()) : 0.0;
       const skills = parseStringArray(pickCell(row, ['skills', 'Skills']) || '');
-      const preferred_domain = toText(pickCell(row, ['preferred_domain', 'Preferred Domain'])) || '';
+      const preferred_domain = toText(pickCell(row, ['Project Domain', 'preferred_domain', 'Preferred Domain'])) || '';
       
-      const rawStartDate = pickCell(row, ['start_date', 'Start Date', 'DOJ']);
-      const rawEndDate = pickCell(row, ['end_date', 'End Date', 'DOL']);
+      const rawStartDate = pickCell(row, ['Date of Joining', 'start_date', 'Start Date', 'DOJ']);
+      const rawEndDate = pickCell(row, ['Date of Leaving', 'end_date', 'End Date', 'DOL']);
       
-      const duration_months = toNumber(pickCell(row, ['duration_months', 'Duration Months']), 3);
+      const duration_months = toNumber(pickCell(row, ['Duration (Months)', 'duration_months', 'Duration Months']), 3);
       const excelGuideName = toText(pickCell(row, ['Guide Name']));
       const excelGuidePNo = toText(pickCell(row, ['Guide P No', 'Guide PNo', 'Guide_PNo', 'Guide P.No']));
       const project_required = toText(pickCell(row, ['Project Required', 'project_required', 'ProjectRequired'])) || 'Yes';
+      const project_title = toText(pickCell(row, ['Project Title', 'Project_title', 'project_title'])) || null;
+      const project_details = toText(pickCell(row, ['Project Domain', 'Project_details', 'project_details'])) || null;
 
       // ── Validations ──
       if (!p_no) {

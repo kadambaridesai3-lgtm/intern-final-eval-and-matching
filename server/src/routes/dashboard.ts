@@ -402,14 +402,14 @@ router.get('/allotted-download', async (req, res) => {
 
     worksheet.columns = [
       { header: 'P No', key: 'pno', width: 15 },
-      { header: 'Intern Name', key: 'name', width: 30 },
+      { header: 'Candidate Name', key: 'name', width: 30 },
       {
-        header: filter === 'guide' ? 'Guide' : 'Branch',
+        header: filter === 'guide' ? 'Guide Name' : 'Branch',
         key: 'group',
         width: 30,
       },
-      { header: 'Start Date', key: 'startDate', width: 20 },
-      { header: 'End Date', key: 'endDate', width: 20 },
+      { header: 'Date of Joining', key: 'startDate', width: 20 },
+      { header: 'Date of Leaving', key: 'endDate', width: 20 },
     ];
 
     interns.forEach((intern) => {
@@ -467,10 +467,10 @@ router.get('/waitlisted-download', async (_req, res) => {
 
     worksheet.columns = [
       { header: 'P No', key: 'pno', width: 15 },
-      { header: 'Intern Name', key: 'name', width: 30 },
+      { header: 'Candidate Name', key: 'name', width: 30 },
       { header: 'Branch', key: 'branch', width: 20 },
-      { header: 'Start Date', key: 'startDate', width: 20 },
-      { header: 'End Date', key: 'endDate', width: 20 },
+      { header: 'Date of Joining', key: 'startDate', width: 20 },
+      { header: 'Date of Leaving', key: 'endDate', width: 20 },
     ];
 
     interns.forEach((intern) => {
@@ -526,10 +526,10 @@ router.get('/yet-to-join-download', async (_req, res) => {
 
     worksheet.columns = [
       { header: 'P No', key: 'pno', width: 15 },
-      { header: 'Intern Name', key: 'name', width: 30 },
+      { header: 'Candidate Name', key: 'name', width: 30 },
       { header: 'Branch', key: 'branch', width: 20 },
-      { header: 'Start Date', key: 'startDate', width: 20 },
-      { header: 'End Date', key: 'endDate', width: 20 },
+      { header: 'Date of Joining', key: 'startDate', width: 20 },
+      { header: 'Date of Leaving', key: 'endDate', width: 20 },
     ];
 
     interns.forEach((intern) => {

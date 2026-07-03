@@ -86,8 +86,8 @@ export function parseAttendanceExcel(filePath: string): RawAttendanceRow[] {
     }
 
     const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
-    const employee_name = String(pickCell(row, ['Employee Name', 'EmployeeName', 'Name', 'Intern Name'])).trim();
-    const department = String(pickCell(row, ['Department Name', 'Dept.Name', 'department', 'Department'])).trim();
+    const employee_name = String(pickCell(row, ['Candidate Name', 'Employee Name', 'EmployeeName', 'Name', 'Intern Name'])).trim();
+    const department = String(pickCell(row, ['Department', 'Department Name', 'Dept.Name', 'department'])).trim();
 
     if (hasDateColumns) {
       // Extract year from DOJ or DOL if available, else current year
@@ -140,7 +140,7 @@ export function parseAttendanceExcel(filePath: string): RawAttendanceRow[] {
       const attendance_status = String(pickCell(row, ['Attendance Status', 'AttendanceStatus', 'Status'])).trim();
       const report_submitted = String(pickCell(row, ['Report Submitted', 'ReportSubmitted'])).trim();
       const rawSubmissionTime = pickCell(row, ['Submission Time', 'SubmissionTime', 'Submitted Time', 'submitted_time']);
-      const remarks = String(pickCell(row, ['Remarks', 'remarks'])).trim();
+      const remarks = String(pickCell(row, ['Remarks', 'remarks', 'Remark'])).trim();
 
       const attendance_date = parseDateSafe(rawDate);
       const submitted_at = parseDateSafe(rawSubmissionTime);
@@ -312,6 +312,7 @@ export function parseSmartCardExcel(filePath: string): RawSmartCardRow[] {
     const rawDate = pickCell(row, ['Date', 'date', 'Punch Date']);
     const in_time = String(pickCell(row, ['In Time', 'InTime', 'In'])).trim();
     const out_time = String(pickCell(row, ['Out Time', 'OutTime', 'Out'])).trim();
+    // candidate_name parsed for completeness (not stored in SmartCardPunch)
 
     const punch_date = parseDateSafe(rawDate);
 

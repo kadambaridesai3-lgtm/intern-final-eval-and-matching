@@ -180,7 +180,7 @@ export default function InternDetail() {
             <h2 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Profile</h2>
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-gray-500">Type</dt>
+                <dt className="text-gray-500">Intern Type</dt>
                 <dd className="font-medium">{intern.intern_type}</dd>
               </div>
               <div className="flex justify-between">
@@ -192,19 +192,19 @@ export default function InternDetail() {
                 <dd className="font-medium">{intern.graduation_year}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">Start Date</dt>
+                <dt className="text-gray-500">Date of Joining</dt>
                 <dd className="font-medium">{new Date(intern.start_date).toLocaleDateString('en-IN')}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">Duration</dt>
+                <dt className="text-gray-500">Duration (Months)</dt>
                 <dd className="font-medium">{intern.duration_months} months</dd>
               </div>
               <div className="flex justify-between">
-  <dt className="text-gray-500">End date</dt>
-  <dd className="font-medium">
-    {new Date(intern.end_date).toLocaleDateString('en-IN')}
-  </dd>
-</div>
+                <dt className="text-gray-500">Date of Leaving</dt>
+                <dd className="font-medium">
+                  {new Date(intern.end_date).toLocaleDateString('en-IN')}
+                </dd>
+              </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">Phone</dt>
                 <dd className="font-medium">{intern.phone}</dd>

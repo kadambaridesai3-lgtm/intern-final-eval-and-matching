@@ -264,7 +264,7 @@ export default function SmartCardAttendance() {
             <h3 className="font-extrabold text-gray-800">📤 Upload Smart Card File</h3>
             <p className="text-xs text-gray-500 leading-relaxed">
               Upload an Excel sheet containing smart card entry logs.
-              The sheet must contain the following columns: <strong>P No</strong>, <strong>Date</strong>, <strong>In Time</strong>, <strong>Out Time</strong>.
+              The sheet must contain the following columns: <strong>P No</strong>, <strong>Candidate Name</strong>, <strong>Date</strong>, <strong>In Time</strong>, <strong>Out Time</strong>, <strong>Working Hours</strong>, <strong>Status</strong>, <strong>Remarks</strong>.
             </p>
             <div className="pt-2 space-y-2">
               <label className="w-full flex items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-3 px-4 rounded-xl cursor-pointer shadow hover:shadow-md transition text-center text-sm">

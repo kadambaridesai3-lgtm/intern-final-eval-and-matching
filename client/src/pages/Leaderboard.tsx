@@ -264,8 +264,8 @@ export default function Leaderboard() {
                 <thead>
                   <tr className="bg-gradient-to-r from-purple-600 to-blue-600 text-white">
                     <th className="px-6 py-4 text-left font-bold">Rank</th>
-                    <th className="px-6 py-4 text-left font-bold">P.No</th>
-                    <th className="px-6 py-4 text-left font-bold">Name</th>
+                    <th className="px-6 py-4 text-left font-bold">P No</th>
+                    <th className="px-6 py-4 text-left font-bold">Candidate Name</th>
                     <th className="px-6 py-4 text-center font-bold">HR Score</th>
                     <th className="px-6 py-4 text-center font-bold">Peer Avg</th>
                     <th className="px-6 py-4 text-center font-bold">Presentation Score</th>

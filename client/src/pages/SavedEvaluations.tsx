@@ -168,7 +168,7 @@ export default function SavedEvaluations() {
                 <thead>
                   <tr className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
                     <th className="px-6 py-4 text-left font-bold">Batch</th>
-                    <th className="px-6 py-4 text-left font-bold">Presenter ID</th>
+                    <th className="px-6 py-4 text-left font-bold">Presenter P No</th>
                     <th className="px-6 py-4 text-left font-bold">Presenter Name</th>
                     <th className="px-6 py-4 text-left font-bold">Evaluator ID</th>
                     <th className="px-6 py-4 text-center font-bold">Role</th>

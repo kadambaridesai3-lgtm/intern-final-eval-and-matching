@@ -272,7 +272,7 @@ export default function AttendanceEvaluation() {
               <div className="flex flex-col items-center justify-center">
                 <div className="text-4xl mb-3">📄</div>
                 <p className="text-gray-600 mb-2">Drag & drop an Excel file here, or click to browse</p>
-                <p className="text-xs text-gray-400 mb-4">Expected columns: P No, Employee Name, Date, Department, Attendance Status, Report Submitted, Submission Time, Remarks</p>
+                <p className="text-xs text-gray-400 mb-4">Expected columns: P No, Candidate Name, Date, Attendance Status, Report Submitted, Submission Time, Department, Remarks</p>
                 <div className="flex items-center gap-3">
                   <label className="btn-primary cursor-pointer">
                     Choose File
@@ -432,7 +432,7 @@ export default function AttendanceEvaluation() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="th">#</th>
-                    <th className="th">P.No</th>
+                    <th className="th">P No</th>
                     <th className="th">Name</th>
                     <th className="th">Working Days</th>
                     <th className="th">Present</th>

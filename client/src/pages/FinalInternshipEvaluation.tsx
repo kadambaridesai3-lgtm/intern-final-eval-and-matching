@@ -572,7 +572,7 @@ export default function FinalInternshipEvaluation() {
             <h3 className="text-lg font-bold text-gray-800">📋 Final Rankings & Grades</h3>
             <input
               type="text"
-              placeholder="Search by P.No, Name, Department, Status, or Grade..."
+              placeholder="Search by P No, Name, Department, Status, or Grade..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="input w-full max-w-sm text-xs bg-white border-gray-200 rounded-xl"
@@ -684,9 +684,9 @@ export default function FinalInternshipEvaluation() {
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer" onClick={() => handleSort('rank')}>
                         Rank {sortField === 'rank' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
-                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">P.No</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">P No</th>
 
-                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Intern Name</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Candidate Name</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Department</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Intern Status</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer text-center" onClick={() => handleSort('project_score')}>
