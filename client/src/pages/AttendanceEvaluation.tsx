@@ -278,7 +278,7 @@ export default function AttendanceEvaluation() {
                     Choose File
                     <input
                       type="file"
-                      accept=".xlsx,.xls,.csv"
+                      accept=".xlsx,.xls"
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -362,7 +362,7 @@ export default function AttendanceEvaluation() {
         <div className="flex items-center justify-between mb-4 gap-4">
           <input
             type="text"
-            placeholder="Search by name or ID..."
+            placeholder="Search by Candidate Name or P No..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input max-w-sm"
@@ -433,7 +433,7 @@ export default function AttendanceEvaluation() {
                   <tr>
                     <th className="th">#</th>
                     <th className="th">P No</th>
-                    <th className="th">Name</th>
+                    <th className="th">Candidate Name</th>
                     <th className="th">Working Days</th>
                     <th className="th">Present</th>
                     <th className="th">Genuine</th>

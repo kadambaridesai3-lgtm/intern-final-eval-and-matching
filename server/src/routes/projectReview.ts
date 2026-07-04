@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import XLSX from 'xlsx';
+import { cleanPNo, validateExcelHeaders, toText } from '../utils/excel';
 import { getPrisma } from '../lib/prisma';
 import {
   calculateHRScore,
@@ -647,10 +648,15 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     let rows: any[];
+    let headers: string[] = [];
     try {
       const workbook = XLSX.readFile(tempPath);
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
+
+      const headerRow = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0] as string[];
+      headers = (headerRow || []).map(h => String(h || '').trim());
+
       rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
     } catch (err: any) {
       if (err.code === 'EBUSY' || err.message?.includes('busy') || err.message?.includes('lock')) {
@@ -659,20 +665,27 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Failed to parse Excel file: ' + err.message });
     }
 
+    const EXPECTED_PROJECT_REVIEW_HEADERS = [
+      'P No',
+      'Candidate Name',
+      'Guide Name',
+      'Department',
+      'HR Score',
+      'Peer Average',
+      'Presentation Score',
+      'Penalty',
+      'Final Project Score',
+      'Remarks'
+    ];
+
+    const headerError = validateExcelHeaders(headers, EXPECTED_PROJECT_REVIEW_HEADERS);
+    if (headerError) {
+      return res.status(400).json({ error: headerError });
+    }
+
     if (rows.length === 0) {
       return res.status(400).json({ error: 'No records found in Excel file' });
     }
-
-    const pickCell = (row: Record<string, unknown>, keys: string[]) => {
-      const rowKeys = Object.keys(row);
-      const matchKey = rowKeys.find(k => keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, '')));
-      return matchKey ? row[matchKey] : '';
-    };
-
-    const toText = (value: unknown) => {
-      if (value === undefined || value === null) return '';
-      return String(value).trim();
-    };
 
     // Get or create default review
     let review = await prisma.projectReview.findFirst({
@@ -703,10 +716,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         continue;
       }
 
-      const pNo = toText(pickCell(row, ['P No', 'pno', 'p_no', 'P.No'])).trim();
-      const rawHrScore = pickCell(row, ['HR Score', 'hrscore', 'hr_score']);
-      const rawPeerAverage = pickCell(row, ['Peer Average', 'peeraverage', 'peer_average']);
-      const rawPenalty = pickCell(row, ['Penalty', 'penalty', 'total_penalty']);
+      const pNo = cleanPNo(row['P No']);
+      const rawHrScore = row['HR Score'];
+      const rawPeerAverage = row['Peer Average'];
+      const rawPenalty = row['Penalty'];
 
       if (!pNo) {
         errors.push({ row: rowNum, error: `Row ${rowNum}: P No is blank.` });

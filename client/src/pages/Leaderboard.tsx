@@ -14,12 +14,25 @@ interface LeaderboardEntry {
 export default function Leaderboard() {
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [interns, setInterns] = useState<any[]>([]);
   const [selectedReviewId, setSelectedReviewId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(true);
 
   useEffect(() => {
+    async function loadInterns() {
+      try {
+        const res = await fetch('/api/interns');
+        if (res.ok) {
+          const data = await res.json();
+          setInterns(data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadInterns();
     loadReviews();
   }, []);
 
@@ -123,6 +136,11 @@ export default function Leaderboard() {
       alert(`Failed to delete: ${err.message}`);
     }
   }
+
+  const getPNo = (internId: string) => {
+    const found = interns.find(i => i.intern_id === internId);
+    return found ? found.p_no : internId;
+  };
 
   const getMedalEmoji = (index: number) => {
     if (index === 0) return '🥇';
@@ -296,7 +314,7 @@ export default function Leaderboard() {
                           {getMedalEmoji(index)}
                         </td>
                         <td className="px-6 py-4 text-gray-700 font-medium">
-                          {item.internId ?? 'N/A'}
+                          {getPNo(item.internId) || 'N/A'}
                         </td>
                         <td className="px-6 py-4 text-gray-800 font-semibold">
                           {item.internName ?? 'Unknown'}

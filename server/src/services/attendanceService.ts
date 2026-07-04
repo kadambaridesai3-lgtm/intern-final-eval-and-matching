@@ -1,5 +1,6 @@
 import { getPrisma } from '../lib/prisma';
 import XLSX from 'xlsx';
+import { cleanPNo, validateExcelHeaders, toText } from '../utils/excel';
 
 const prisma = getPrisma();
 
@@ -54,27 +55,31 @@ export function parseAttendanceExcel(filePath: string): RawAttendanceRow[] {
   const workbook = XLSX.readFile(filePath, { cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  
+  // Get all headers from row 1
+  const headerRow = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0] as string[];
+  const headers = (headerRow || []).map(h => String(h || '').trim());
 
+  const EXPECTED_ATTENDANCE_HEADERS = [
+    'P No',
+    'Candidate Name',
+    'Date',
+    'Attendance Status',
+    'Report Submitted',
+    'Submission Time',
+    'Department',
+    'Remarks'
+  ];
+
+  const headerError = validateExcelHeaders(headers, EXPECTED_ATTENDANCE_HEADERS);
+  if (headerError) {
+    throw new Error(headerError);
+  }
+
+  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
   console.log('[Attendance] Parsed', rows.length, 'rows from Excel');
 
-  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
-    const rowKeys = Object.keys(row);
-    const matchKey = rowKeys.find(k => 
-      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
-    );
-    return matchKey !== undefined ? row[matchKey] : '';
-  };
-
   const parsed: RawAttendanceRow[] = [];
-  if (rows.length === 0) return parsed;
-
-  // Detect if there are monthly date columns (e.g. "1-Jun", "2-Jun")
-  const firstRowKeys = Object.keys(rows[0]);
-  const dateColumnKeys = firstRowKeys.filter(k => /^\d+-[A-Za-z]+$/i.test(k.trim()));
-
-  const hasDateColumns = dateColumnKeys.length > 0;
-  console.log('[Attendance] Has column-based date headers:', hasDateColumns, dateColumnKeys);
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -85,78 +90,29 @@ export function parseAttendanceExcel(filePath: string): RawAttendanceRow[] {
       continue;
     }
 
-    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
-    const employee_name = String(pickCell(row, ['Candidate Name', 'Employee Name', 'EmployeeName', 'Name', 'Intern Name'])).trim();
-    const department = String(pickCell(row, ['Department', 'Department Name', 'Dept.Name', 'department'])).trim();
+    const p_no = cleanPNo(row['P No']);
+    const employee_name = toText(row['Candidate Name']);
+    const rawDate = row['Date'];
+    const attendance_status = toText(row['Attendance Status']);
+    const report_submitted = toText(row['Report Submitted']);
+    const rawSubmissionTime = row['Submission Time'];
+    const department = toText(row['Department']);
+    const remarks = toText(row['Remarks']);
 
-    if (hasDateColumns) {
-      // Extract year from DOJ or DOL if available, else current year
-      let baseYear = new Date().getFullYear();
-      const rawDoj = pickCell(row, ['DOJ', 'doj', 'Start Date', 'start_date']);
-      if (rawDoj) {
-        const parsedDoj = parseDateSafe(rawDoj);
-        if (parsedDoj && !isNaN(parsedDoj.getTime())) {
-          baseYear = parsedDoj.getFullYear();
-        }
-      }
-      const rawDol = pickCell(row, ['DOL', 'dol', 'End Date', 'end_date']);
-      if (rawDol) {
-        const parsedDol = parseDateSafe(rawDol);
-        if (parsedDol && !isNaN(parsedDol.getTime())) {
-          baseYear = parsedDol.getFullYear();
-        }
-      }
+    const attendance_date = parseDateSafe(rawDate);
+    const submitted_at = parseDateSafe(rawSubmissionTime);
 
-      for (const dateKey of dateColumnKeys) {
-        const val = String(row[dateKey]).trim().toUpperCase();
-        if (val === 'P') {
-          // Parse header string like "1-Jun" to date
-          const match = dateKey.trim().match(/^(\d+)-([A-Za-z]+)$/);
-          if (match) {
-            const day = parseInt(match[1]);
-            const monthStr = match[2];
-            const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-            const monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
-            if (monthIndex !== -1) {
-              const attendance_date = new Date(baseYear, monthIndex, day);
-              parsed.push({
-                p_no,
-                employee_name,
-                attendance_date,
-                department,
-                attendance_status: 'PRESENT',
-                report_submitted: 'YES',
-                submitted_at: attendance_date, // Submission same day -> Marks it as PRESENT (genuine)
-                remarks: '',
-                rowNum
-              });
-            }
-          }
-        }
-      }
-    } else {
-      // Standard row-based layout
-      const rawDate = pickCell(row, ['Date', 'date']);
-      const attendance_status = String(pickCell(row, ['Attendance Status', 'AttendanceStatus', 'Status'])).trim();
-      const report_submitted = String(pickCell(row, ['Report Submitted', 'ReportSubmitted'])).trim();
-      const rawSubmissionTime = pickCell(row, ['Submission Time', 'SubmissionTime', 'Submitted Time', 'submitted_time']);
-      const remarks = String(pickCell(row, ['Remarks', 'remarks', 'Remark'])).trim();
-
-      const attendance_date = parseDateSafe(rawDate);
-      const submitted_at = parseDateSafe(rawSubmissionTime);
-
-      parsed.push({
-        p_no,
-        employee_name,
-        attendance_date,
-        department,
-        attendance_status,
-        report_submitted,
-        submitted_at,
-        remarks,
-        rowNum
-      });
-    }
+    parsed.push({
+      p_no,
+      employee_name,
+      attendance_date,
+      department,
+      attendance_status,
+      report_submitted,
+      submitted_at,
+      remarks,
+      rowNum
+    });
   }
 
   return parsed;
@@ -285,17 +241,29 @@ export function parseSmartCardExcel(filePath: string): RawSmartCardRow[] {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
+  
+  // Get all headers from row 1
+  const headerRow = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0] as string[];
+  const headers = (headerRow || []).map(h => String(h || '').trim());
+
+  const EXPECTED_SMARTCARD_HEADERS = [
+    'P No',
+    'Candidate Name',
+    'Date',
+    'In Time',
+    'Out Time',
+    'Working Hours',
+    'Status',
+    'Remarks'
+  ];
+
+  const headerError = validateExcelHeaders(headers, EXPECTED_SMARTCARD_HEADERS);
+  if (headerError) {
+    throw new Error(headerError);
+  }
+
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
   console.log('[SmartCard] Parsed', rows.length, 'rows from Excel');
-
-  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
-    const rowKeys = Object.keys(row);
-    const matchKey = rowKeys.find(k => 
-      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
-    );
-    return matchKey !== undefined ? row[matchKey] : '';
-  };
 
   const parsed: RawSmartCardRow[] = [];
 
@@ -308,11 +276,10 @@ export function parseSmartCardExcel(filePath: string): RawSmartCardRow[] {
       continue;
     }
 
-    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
-    const rawDate = pickCell(row, ['Date', 'date', 'Punch Date']);
-    const in_time = String(pickCell(row, ['In Time', 'InTime', 'In'])).trim();
-    const out_time = String(pickCell(row, ['Out Time', 'OutTime', 'Out'])).trim();
-    // candidate_name parsed for completeness (not stored in SmartCardPunch)
+    const p_no = cleanPNo(row['P No']);
+    const rawDate = row['Date'];
+    const in_time = toText(row['In Time']);
+    const out_time = toText(row['Out Time']);
 
     const punch_date = parseDateSafe(rawDate);
 

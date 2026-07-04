@@ -145,6 +145,10 @@ export async function generateAllFinalEvaluations(reviewId?: string): Promise<an
     if (finalScore !== null) {
       grade = assignGrade(finalScore);
       remarks = assignRemarks(grade);
+    } else {
+      if (isProjectRequired && projectScore === null) {
+        remarks = "Pending Project Review";
+      }
     }
 
     // Save with review_id as null to ensure one record per intern overall
@@ -413,11 +417,169 @@ export async function getFinalEvaluationByInternId(internId: string, reviewId?: 
   };
 }
 
-export async function deleteFinalEvaluation(internId: string, reviewId?: string) {
-  return prisma.finalInternshipEvaluation.deleteMany({
+export async function recalculateAllRanks(reviewId?: string): Promise<void> {
+  const evaluations = await prisma.finalInternshipEvaluation.findMany({
     where: {
-      intern_id: internId,
-      review_id: null,
+      review_id: reviewId || null,
+      intern: {
+        status: {
+          in: ['Applied', 'Matched', 'Assigned', 'Ongoing', 'Completed'],
+        },
+      },
     },
   });
+
+  evaluations.sort((a, b) => {
+    const scoreA = a.final_internship_score ?? -1;
+    const scoreB = b.final_internship_score ?? -1;
+    return scoreB - scoreA;
+  });
+
+  for (let i = 0; i < evaluations.length; i++) {
+    const score = evaluations[i].final_internship_score;
+    const rank = score !== null ? i + 1 : 0;
+    await prisma.finalInternshipEvaluation.update({
+      where: { id: evaluations[i].id },
+      data: { rank },
+    });
+  }
+}
+
+export async function deleteFinalEvaluation(internId: string, reviewId?: string) {
+  const result = await prisma.finalInternshipEvaluation.deleteMany({
+    where: {
+      intern_id: internId,
+      review_id: reviewId || null,
+    },
+  });
+  await recalculateAllRanks(reviewId);
+  return result;
+}
+
+export async function createOrUpdateFinalEvaluation(data: {
+  p_no: string;
+  attendance_score: number;
+  guide_score: number;
+  project_score?: number | null;
+  remarks?: string;
+  review_id?: string | null;
+}) {
+  const intern = await prisma.intern.findFirst({
+    where: { p_no: data.p_no },
+  });
+
+  if (!intern) {
+    throw new Error(`Intern with P No "${data.p_no}" not found`);
+  }
+
+  const isProjectRequired = data.project_score !== undefined && data.project_score !== null;
+  const finalScore = calculateFinalInternshipScore(
+    data.project_score ?? null,
+    data.attendance_score,
+    data.guide_score,
+    isProjectRequired
+  );
+
+  let grade = '';
+  let remarks = data.remarks || '';
+  if (finalScore !== null) {
+    grade = assignGrade(finalScore);
+    if (!remarks) {
+      remarks = assignRemarks(grade);
+    }
+  }
+
+  const existing = await prisma.finalInternshipEvaluation.findFirst({
+    where: {
+      intern_id: intern.intern_id,
+      review_id: data.review_id || null,
+    },
+  });
+
+  let evaluation;
+  if (existing) {
+    evaluation = await prisma.finalInternshipEvaluation.update({
+      where: { id: existing.id },
+      data: {
+        project_score: data.project_score ?? null,
+        attendance_score: data.attendance_score,
+        guide_score: data.guide_score,
+        final_internship_score: finalScore,
+        grade,
+        remarks,
+        updated_at: new Date(),
+      },
+    });
+  } else {
+    evaluation = await prisma.finalInternshipEvaluation.create({
+      data: {
+        intern_id: intern.intern_id,
+        review_id: data.review_id || null,
+        project_score: data.project_score ?? null,
+        attendance_score: data.attendance_score,
+        guide_score: data.guide_score,
+        final_internship_score: finalScore,
+        grade,
+        remarks,
+      },
+    });
+  }
+
+  await recalculateAllRanks(data.review_id || undefined);
+  return evaluation;
+}
+
+export async function updateFinalEvaluation(
+  internId: string,
+  data: {
+    attendance_score: number;
+    guide_score: number;
+    project_score?: number | null;
+    remarks?: string;
+    review_id?: string | null;
+  }
+) {
+  const existing = await prisma.finalInternshipEvaluation.findFirst({
+    where: {
+      intern_id: internId,
+      review_id: data.review_id || null,
+    },
+  });
+
+  if (!existing) {
+    throw new Error(`Final evaluation for intern ID "${internId}" not found`);
+  }
+
+  const isProjectRequired = data.project_score !== undefined && data.project_score !== null;
+  const finalScore = calculateFinalInternshipScore(
+    data.project_score ?? null,
+    data.attendance_score,
+    data.guide_score,
+    isProjectRequired
+  );
+
+  let grade = '';
+  let remarks = data.remarks || '';
+  if (finalScore !== null) {
+    grade = assignGrade(finalScore);
+    if (!remarks) {
+      remarks = assignRemarks(grade);
+    }
+  }
+
+  const evaluation = await prisma.finalInternshipEvaluation.update({
+    where: { id: existing.id },
+    data: {
+      project_score: data.project_score ?? null,
+      attendance_score: data.attendance_score,
+      guide_score: data.guide_score,
+      final_internship_score: finalScore,
+      grade,
+      remarks,
+      updated_at: new Date(),
+    },
+  });
+
+  await recalculateAllRanks(data.review_id || undefined);
+  return evaluation;
 }

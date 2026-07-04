@@ -2,7 +2,7 @@ import express from 'express';
 import { getPrisma } from '../lib/prisma';
 import { generateStyledWorkbook } from '../utils/excelService';
 import { getAllGuideFeedbacks } from '../services/guideFeedbackService';
-import { getAllSummaries, isLate, isEarlyExit, getWorkingHours } from '../services/attendanceService';
+import { isLate, isEarlyExit, getWorkingHours } from '../services/attendanceService';
 import { getAllFinalEvaluations } from '../services/finalEvaluationService';
 import { corporateLogger } from '../utils/logger';
 
@@ -72,15 +72,6 @@ router.get('/guide-feedback', async (req, res) => {
       'Q8': fb.initiative_innovation || '',
       'Q9': fb.learning_adaptability || '',
       'Q10': fb.attendance_punctuality || '',
-      'Q11': fb.communication || '',
-      'Q12': fb.professionalism_ethics || '',
-      'Q13': fb.respect_authority || '',
-      'Q14': fb.accountability || '',
-      'Q15': fb.teamwork || '',
-      'Q16': fb.conflict_resolution || '',
-      'Q17': fb.empathy || '',
-      'Q18': fb.leadership_potential || '',
-      'Q19': fb.conflict_handling || '',
       'Guide Score': fb.guide_score ? `${(fb.guide_score ?? 0).toFixed(1)}` : '',
       'Remarks': '',
     }));
@@ -88,8 +79,7 @@ router.get('/guide-feedback', async (req, res) => {
     const headers = [
       'P No', 'Candidate Name', 'Guide Name', 'Department',
       'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10',
-      'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16',
-      'Q17', 'Q18', 'Q19', 'Guide Score', 'Remarks'
+      'Guide Score', 'Remarks'
     ];
     const buffer = await generateStyledWorkbook('Guide Feedback', headers, data);
     
@@ -138,22 +128,28 @@ router.get('/smart-card-punches', async (req, res) => {
   }
 });
 
-// GET /api/exports/attendance-evaluation
+// GET /api/exports/attendance-evaluation (Daily Attendance Export)
 router.get('/attendance-evaluation', async (req, res) => {
   try {
-    const summaries = await getAllSummaries();
-    const data = summaries.map(s => ({
-      'P No': s.intern?.p_no || '',
-      'Candidate Name': s.intern?.full_name || '',
-      'Department': '',
-      'Attendance Status': s.flagged ? 'Flagged' : 'OK',
-      'Report Submitted': s.genuine_days > 0 ? 'Yes' : 'No',
-      'Submission Time': '',
-      'Attendance Score': s.attendance_score.toFixed(2),
-      'Remarks': s.flagged ? 'Bulk submission detected' : '',
+    const records = await prisma.attendanceRecord.findMany({
+      include: {
+        intern: true
+      },
+      orderBy: { attendance_date: 'desc' }
+    });
+
+    const data = records.map(r => ({
+      'P No': r.intern?.p_no || '',
+      'Candidate Name': r.intern?.full_name || '',
+      'Date': r.attendance_date ? new Date(r.attendance_date).toLocaleDateString('en-IN') : '',
+      'Attendance Status': r.status || '',
+      'Report Submitted': r.submitted_at ? 'Yes' : 'No',
+      'Submission Time': r.submitted_at ? new Date(r.submitted_at).toLocaleTimeString('en-IN') : '',
+      'Department': r.intern?.department || '',
+      'Remarks': '',
     }));
 
-    const headers = ['P No', 'Candidate Name', 'Department', 'Attendance Status', 'Report Submitted', 'Submission Time', 'Attendance Score', 'Remarks'];
+    const headers = ['P No', 'Candidate Name', 'Date', 'Attendance Status', 'Report Submitted', 'Submission Time', 'Department', 'Remarks'];
     const buffer = await generateStyledWorkbook('Attendance Summary', headers, data);
     
     await corporateLogger.log('AUDIT', 'Exports', 'Export Attendance Summary', 'Successfully exported Attendance Summary Excel file');
@@ -175,21 +171,29 @@ router.get('/project-review/:reviewId', async (req, res) => {
 
     if (!review) return res.status(404).json({ error: 'Review batch not found' });
 
-    const data = review.finalResults.map((r, idx) => ({
-      'Rank': idx + 1,
-      'P No': r.presenter_id,
-      'Candidate Name': r.presenter_name,
-      'Guide Name': '',
-      'Department': '',
-      'HR Score': r.hr_score || '',
-      'Peer Average': r.peer_average || '',
-      'Presentation Score': r.presentation_score || '',
-      'Penalty': r.total_penalty || '',
-      'Final Project Score': r.final_score || '',
-      'Remarks': '',
-    }));
+    // Lookup interns to retrieve P No, Guide Name, and Department
+    const interns = await prisma.intern.findMany({
+      include: { assigned_guide: true }
+    });
+    const internMap = new Map(interns.map(i => [i.intern_id, i]));
 
-    const headers = ['Rank', 'P No', 'Candidate Name', 'Guide Name', 'Department', 'HR Score', 'Peer Average', 'Presentation Score', 'Penalty', 'Final Project Score', 'Remarks'];
+    const data = review.finalResults.map((r) => {
+      const intern = internMap.get(r.presenter_id);
+      return {
+        'P No': intern?.p_no || '',
+        'Candidate Name': r.presenter_name,
+        'Guide Name': intern?.assigned_guide?.full_name || '',
+        'Department': intern?.department || '',
+        'HR Score': r.hr_score || '',
+        'Peer Average': r.peer_average || '',
+        'Presentation Score': r.presentation_score || '',
+        'Penalty': r.total_penalty || '',
+        'Final Project Score': r.final_score || '',
+        'Remarks': '',
+      };
+    });
+
+    const headers = ['P No', 'Candidate Name', 'Guide Name', 'Department', 'HR Score', 'Peer Average', 'Presentation Score', 'Penalty', 'Final Project Score', 'Remarks'];
     const buffer = await generateStyledWorkbook('Project Review', headers, data);
     
     await corporateLogger.log('AUDIT', 'Exports', 'Export Project Review', 'Successfully exported Project Review Excel file');
@@ -206,20 +210,20 @@ router.get('/final-evaluation', async (req, res) => {
   try {
     const evaluations = await getAllFinalEvaluations();
     const data = evaluations.map(ev => ({
-      'Rank': ev.final_internship_score !== null && ev.rank > 0 ? ev.rank : '',
       'P No': ev.intern?.p_no || '',
       'Candidate Name': ev.intern?.full_name || '',
-      'Guide Name': '',
+      'Guide Name': ev.intern?.guide_feedbacks?.[0]?.guide_name || '',
       'Department': ev.intern?.department || '',
       'Attendance Score': ev.attendance_score !== null ? ev.attendance_score : '',
       'Guide Score': ev.guide_score !== null ? ev.guide_score : '',
       'Project Score': ev.project_score !== null ? ev.project_score : '',
       'Final Score': ev.final_internship_score !== null ? ev.final_internship_score : '',
       'Grade': ev.final_internship_score !== null ? ev.grade : '',
+      'Rank': ev.final_internship_score !== null && ev.rank > 0 ? ev.rank : '',
       'Remarks': ev.remarks || '',
     }));
 
-    const headers = ['Rank', 'P No', 'Candidate Name', 'Guide Name', 'Department', 'Attendance Score', 'Guide Score', 'Project Score', 'Final Score', 'Grade', 'Remarks'];
+    const headers = ['P No', 'Candidate Name', 'Guide Name', 'Department', 'Attendance Score', 'Guide Score', 'Project Score', 'Final Score', 'Grade', 'Rank', 'Remarks'];
     const buffer = await generateStyledWorkbook('Final Evaluations', headers, data);
     
     await corporateLogger.log('AUDIT', 'Exports', 'Export Final Evaluations', 'Successfully exported Final Evaluations Excel file');

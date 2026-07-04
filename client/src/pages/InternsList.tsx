@@ -172,7 +172,7 @@ export default function InternsList() {
             Upload
             <input
               type="file"
-              accept=".csv,.xlsx"
+              accept=".xlsx,.xls"
               className="hidden"
               onChange={async (e) => {
                 const f = e.target.files?.[0];

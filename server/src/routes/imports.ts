@@ -2,34 +2,34 @@ import { Router } from 'express';
 import multer from 'multer';
 import XLSX from 'xlsx';
 import { getPrisma } from '../lib/prisma';
-import { parseStringArray, toStoredStringArray } from '../utils/stringArray';
+import { toStoredStringArray } from '../utils/stringArray';
 import { generateNextInternId } from '../utils/internId';
 import { generateAllFinalEvaluations } from '../services/finalEvaluationService';
 import { writeTempFile, deleteTempFile } from '../utils/tempFile';
 import { parseDateSafe } from '../services/attendanceService';
+import { cleanPNo, validateExcelHeaders, toText, toNumber } from '../utils/excel';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-function pickCell(row: Record<string, unknown>, keys: string[]) {
-  const rowKeys = Object.keys(row);
-  const matchKey = rowKeys.find(k => 
-    keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
-  );
-  return matchKey ? row[matchKey] : '';
-}
-
-function toText(value: unknown) {
-  if (value === undefined || value === null) return '';
-  if (value instanceof Date) return value.toISOString();
-  return String(value).trim();
-}
-
-function toNumber(value: unknown, fallback: number) {
-  if (value === undefined || value === null || value === '') return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+const EXPECTED_HEADERS = [
+  'P No',
+  'Candidate Name',
+  'Guide Name',
+  'Department',
+  'College',
+  'Branch',
+  'Qualification',
+  'Intern Type',
+  'Project Required',
+  'Project Title',
+  'Project Domain',
+  'Date of Joining',
+  'Date of Leaving',
+  'Duration (Months)',
+  'Status',
+  'Remarks'
+];
 
 // POST /api/interns/import
 router.post('/', upload.single('file'), async (req, res) => {
@@ -46,16 +46,28 @@ router.post('/', upload.single('file'), async (req, res) => {
     }
 
     let rows: any[];
+    let headers: string[] = [];
     try {
       const workbook = XLSX.readFile(tempPath, { cellDates: true });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
+      
+      // Get all headers from row 1
+      const headerRow = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0] as string[];
+      headers = (headerRow || []).map(h => String(h || '').trim());
+
       rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
     } catch (err: any) {
       if (err.code === 'EBUSY' || err.message?.includes('busy') || err.message?.includes('lock')) {
         return res.status(400).json({ error: 'The uploaded Excel file is locked or open in another program. Please close it and try again.' });
       }
       return res.status(400).json({ error: 'Failed to parse Excel file: ' + err.message });
+    }
+
+    // ── Header Validation ──
+    const headerError = validateExcelHeaders(headers, EXPECTED_HEADERS);
+    if (headerError) {
+      return res.status(400).json({ error: headerError });
     }
 
     const prisma = getPrisma();
@@ -74,29 +86,22 @@ router.post('/', upload.single('file'), async (req, res) => {
         continue;
       }
 
-      const full_name = toText(pickCell(row, ['Candidate Name', 'full_name', 'Full Name', 'Name']));
-      const phone = toText(pickCell(row, ['phone', 'Phone', 'Mobile', 'Mobile No'])) || '';
-      const p_no = toText(pickCell(row, ['P No', 'P.no', 'P.No', 'PNo', 'p_no', 'pNo', 'P.No.'])).trim();
-
-      const intern_type = toText(pickCell(row, ['Intern Type', 'Qualification', 'intern_type', 'Bachelor Degree Type', 'Type'])) || 'B.Tech';
-      const college = toText(pickCell(row, ['College', 'college'])) || '';
-      const branch = toText(pickCell(row, ['Branch', 'Bachelor Stream', 'Stream', 'branch'])) || '';
-      const department = toText(pickCell(row, ['Department', 'Department Name', 'department'])) || '';
-      const graduation_year = toNumber(pickCell(row, ['graduation_year', 'Graduation Year']), new Date().getFullYear());
-      const rawCgpa = pickCell(row, ['cgpa', 'CGPA', 'Bachelor Percentage']);
-      const cgpa = rawCgpa ? Number(String(rawCgpa).replace('%', '').replace(',', '.').trim()) : 0.0;
-      const skills = parseStringArray(pickCell(row, ['skills', 'Skills']) || '');
-      const preferred_domain = toText(pickCell(row, ['Project Domain', 'preferred_domain', 'Preferred Domain'])) || '';
-      
-      const rawStartDate = pickCell(row, ['Date of Joining', 'start_date', 'Start Date', 'DOJ']);
-      const rawEndDate = pickCell(row, ['Date of Leaving', 'end_date', 'End Date', 'DOL']);
-      
-      const duration_months = toNumber(pickCell(row, ['Duration (Months)', 'duration_months', 'Duration Months']), 3);
-      const excelGuideName = toText(pickCell(row, ['Guide Name']));
-      const excelGuidePNo = toText(pickCell(row, ['Guide P No', 'Guide PNo', 'Guide_PNo', 'Guide P.No']));
-      const project_required = toText(pickCell(row, ['Project Required', 'project_required', 'ProjectRequired'])) || 'Yes';
-      const project_title = toText(pickCell(row, ['Project Title', 'Project_title', 'project_title'])) || null;
-      const project_details = toText(pickCell(row, ['Project Domain', 'Project_details', 'project_details'])) || null;
+      // Read cells matching standard columns exactly
+      const p_no = cleanPNo(row['P No']);
+      const full_name = toText(row['Candidate Name']);
+      const excelGuideName = toText(row['Guide Name']);
+      const department = toText(row['Department']);
+      const college = toText(row['College']);
+      const branch = toText(row['Branch']);
+      const intern_type = toText(row['Intern Type']) || toText(row['Qualification']) || 'B.Tech';
+      const project_required = toText(row['Project Required']) || 'Yes';
+      const project_title = toText(row['Project Title']) || null;
+      const preferred_domain = toText(row['Project Domain']) || '';
+      const rawStartDate = row['Date of Joining'];
+      const rawEndDate = row['Date of Leaving'];
+      const duration_months = toNumber(row['Duration (Months)'], 3);
+      const importStatus = toText(row['Status']);
+      const remarks = toText(row['Remarks']);
 
       // ── Validations ──
       if (!p_no) {
@@ -132,7 +137,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 
       // Collect warnings for optional blank fields
       if (!full_name) {
-        warnings.push({ row: rowNumber, warning: `Row ${rowNumber}: Full Name is blank` });
+        warnings.push({ row: rowNumber, warning: `Row ${rowNumber}: Candidate Name is blank` });
       }
       if (!department) {
         warnings.push({ row: rowNumber, warning: `Row ${rowNumber}: Department is blank` });
@@ -140,40 +145,23 @@ router.post('/', upload.single('file'), async (req, res) => {
       if (!excelGuideName) {
         warnings.push({ row: rowNumber, warning: `Row ${rowNumber}: Guide Name is blank` });
       }
-      if (!preferred_domain) {
-        warnings.push({ row: rowNumber, warning: `Row ${rowNumber}: Preferred Domain is blank` });
-      }
-      if (!phone) {
-        warnings.push({ row: rowNumber, warning: `Row ${rowNumber}: Mobile number is blank` });
-      }
 
       try {
         let assignedGuideId: string | null = null;
 
         if (excelGuideName) {
-          let guide = null;
-          if (excelGuidePNo) {
-            guide = await prisma.guide.findFirst({
-              where: {
-                p_no: excelGuidePNo.trim(),
-              },
-            });
-          }
-
-          if (!guide && excelGuideName) {
-            guide = await prisma.guide.findFirst({
-              where: {
-                full_name: excelGuideName.trim()
-              },
-            });
-          }
+          let guide = await prisma.guide.findFirst({
+            where: {
+              full_name: excelGuideName.trim()
+            },
+          });
 
           if (!guide) {
             guide = await prisma.guide.create({
               data: {
                 full_name: excelGuideName.trim(),
-                p_no: excelGuidePNo || null,
-                department: 'Imported',
+                p_no: null,
+                department: department || 'Imported',
                 expertise_domains: '',
                 required_skills: '',
                 preferred_intern_types: '',
@@ -188,28 +176,18 @@ router.post('/', upload.single('file'), async (req, res) => {
 
         const today = new Date();
 
-        await prisma.intern.updateMany({
-          where: {
-            assigned_guide_id: null,
-            end_date: {
-              lt: today,
-            },
-          },
-          data: {
-            status: 'Left',
-          },
-        });
-
-        let status = 'Waitlisted';
-        if (!assignedGuideId && today > end_date) {
-          status = 'Left';
-        } else if (today < start_date) {
-          status = 'YetToJoin';
-        } else if (assignedGuideId) {
-          if (today > end_date) {
-            status = 'Completed';
-          } else {
-            status = 'Allotted';
+        let status = importStatus || 'Waitlisted';
+        if (!importStatus) {
+          if (!assignedGuideId && today > end_date) {
+            status = 'Left';
+          } else if (today < start_date) {
+            status = 'YetToJoin';
+          } else if (assignedGuideId) {
+            if (today > end_date) {
+              status = 'Completed';
+            } else {
+              status = 'Allotted';
+            }
           }
         }
 
@@ -228,14 +206,13 @@ router.post('/', upload.single('file'), async (req, res) => {
             },
             data: {
               full_name,
-              phone: phone ?? '',
               p_no: p_no.trim(),
               college: college ?? '',
               branch: branch ?? '',
               department: department ?? '',
-              graduation_year: Number(graduation_year ?? new Date().getFullYear()),
-              cgpa: Number(cgpa ?? 0),
-              skills: toStoredStringArray(skills),
+              graduation_year: new Date(start_date).getFullYear(),
+              cgpa: 0,
+              skills: '',
               preferred_domain: preferred_domain ?? '',
               start_date,
               duration_months: Number(duration_months ?? 3),
@@ -243,6 +220,8 @@ router.post('/', upload.single('file'), async (req, res) => {
               status,
               assigned_guide_id: assignedGuideId,
               project_required: project_required || 'Yes',
+              Project_title: project_title,
+              Project_details: preferred_domain,
             },
           });
         } else {
@@ -251,15 +230,15 @@ router.post('/', upload.single('file'), async (req, res) => {
             data: {
               intern_id: nextInternId,
               full_name,
-              phone: phone ?? '',
+              phone: '', // standard columns don't have phone
               p_no: p_no.trim(),
               intern_type,
               college: college ?? '',
               branch: branch ?? '',
               department: department ?? '',
-              graduation_year: Number(graduation_year ?? new Date().getFullYear()),
-              cgpa: Number(cgpa ?? 0),
-              skills: toStoredStringArray(skills),
+              graduation_year: new Date(start_date).getFullYear(),
+              cgpa: 0,
+              skills: '',
               preferred_domain: preferred_domain ?? '',
               start_date,
               duration_months: Number(duration_months ?? 3),
@@ -267,6 +246,8 @@ router.post('/', upload.single('file'), async (req, res) => {
               status,
               assigned_guide_id: assignedGuideId,
               project_required: project_required || 'Yes',
+              Project_title: project_title,
+              Project_details: preferred_domain,
             },
           });
         }

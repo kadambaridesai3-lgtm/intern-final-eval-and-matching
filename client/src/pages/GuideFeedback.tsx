@@ -51,23 +51,9 @@ const DIMENSIONS = [
     ]
   },
   {
-    category: '👔 Professionalism Dimension (Q10–Q14)',
+    category: '👔 Professionalism Dimension (Q10)',
     items: [
-      { key: 'attendance_punctuality', label: 'Q10 — Attendance & Punctuality', icon: '⏰', isQ10: true },
-      { key: 'communication', label: 'Q11 — Communication', icon: '💬' },
-      { key: 'professionalism_ethics', label: 'Q12 — Professionalism & Ethics', icon: '🛡️' },
-      { key: 'respect_authority', label: 'Q13 — Respect for Authority', icon: '🙇' },
-      { key: 'accountability', label: 'Q14 — Accountability', icon: '📊' },
-    ]
-  },
-  {
-    category: '🤝 Interpersonal Dimension (Q15–Q19)',
-    items: [
-      { key: 'teamwork', label: 'Q15 — Teamwork', icon: '🤝' },
-      { key: 'conflict_resolution', label: 'Q16 — Conflict Resolution', icon: '🕊️' },
-      { key: 'empathy', label: 'Q17 — Empathy', icon: '❤️' },
-      { key: 'leadership_potential', label: 'Q18 — Leadership Potential', icon: '👑' },
-      { key: 'conflict_handling', label: 'Q19 — Conflict Handling', icon: '🥊' },
+      { key: 'attendance_punctuality', label: 'Q10 — Attendance & Punctuality', icon: '⏰', isQ10: true }
     ]
   }
 ] as const;
@@ -91,15 +77,6 @@ const emptyForm = {
   problem_solving: '' as string | number,
   initiative_innovation: '' as string | number,
   learning_adaptability: '' as string | number,
-  communication: '' as string | number,
-  professionalism_ethics: '' as string | number,
-  respect_authority: '' as string | number,
-  accountability: '' as string | number,
-  teamwork: '' as string | number,
-  conflict_resolution: '' as string | number,
-  empathy: '' as string | number,
-  leadership_potential: '' as string | number,
-  conflict_handling: '' as string | number,
   attendance_punctuality: '' as string | number,
 };
 
@@ -139,41 +116,23 @@ export default function GuideFeedbackPage() {
     Number(form.quality_of_work || 0) +
     Number(form.problem_solving || 0) +
     Number(form.initiative_innovation || 0) +
-    Number(form.learning_adaptability || 0) +
-    Number(form.communication || 0) +
-    Number(form.professionalism_ethics || 0) +
-    Number(form.respect_authority || 0) +
-    Number(form.accountability || 0) +
-    Number(form.teamwork || 0) +
-    Number(form.conflict_resolution || 0) +
-    Number(form.empathy || 0) +
-    Number(form.leadership_potential || 0) +
-    Number(form.conflict_handling || 0);
+    Number(form.learning_adaptability || 0);
 
   const hasAnyScore = 
     form.task_completion !== '' ||
     form.quality_of_work !== '' ||
     form.problem_solving !== '' ||
     form.initiative_innovation !== '' ||
-    form.learning_adaptability !== '' ||
-    form.communication !== '' ||
-    form.professionalism_ethics !== '' ||
-    form.respect_authority !== '' ||
-    form.accountability !== '' ||
-    form.teamwork !== '' ||
-    form.conflict_resolution !== '' ||
-    form.empathy !== '' ||
-    form.leadership_potential !== '' ||
-    form.conflict_handling !== '';
+    form.learning_adaptability !== '';
 
-  const calculatedGuideScore = (nonAttendanceSum / 70) * 100;
+  const calculatedGuideScore = (nonAttendanceSum / 25) * 100;
   const calculatedTotalMarks = nonAttendanceSum + Number(form.attendance_punctuality || 0);
-  const calculatedPercentage = (calculatedTotalMarks / 75) * 100;
+  const calculatedPercentage = (calculatedTotalMarks / 30) * 100;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.intern_id.trim()) {
-      setError('P.No is required');
+      setError('P No is required');
       return;
     }
 
@@ -190,15 +149,6 @@ export default function GuideFeedbackPage() {
       problem_solving: form.problem_solving === '' ? '' : Number(form.problem_solving),
       initiative_innovation: form.initiative_innovation === '' ? '' : Number(form.initiative_innovation),
       learning_adaptability: form.learning_adaptability === '' ? '' : Number(form.learning_adaptability),
-      communication: form.communication === '' ? '' : Number(form.communication),
-      professionalism_ethics: form.professionalism_ethics === '' ? '' : Number(form.professionalism_ethics),
-      respect_authority: form.respect_authority === '' ? '' : Number(form.respect_authority),
-      accountability: form.accountability === '' ? '' : Number(form.accountability),
-      teamwork: form.teamwork === '' ? '' : Number(form.teamwork),
-      conflict_resolution: form.conflict_resolution === '' ? '' : Number(form.conflict_resolution),
-      empathy: form.empathy === '' ? '' : Number(form.empathy),
-      leadership_potential: form.leadership_potential === '' ? '' : Number(form.leadership_potential),
-      conflict_handling: form.conflict_handling === '' ? '' : Number(form.conflict_handling),
       attendance_punctuality: form.attendance_punctuality === '' ? '' : Number(form.attendance_punctuality),
     };
 
@@ -225,7 +175,7 @@ export default function GuideFeedbackPage() {
 
   const handleEdit = (fb: GuideFeedbackData) => {
     setForm({
-      intern_id: fb.intern_id,
+      intern_id: fb.p_no || fb.intern_id || '',
       intern_name: fb.intern_name || '',
       guide_name: fb.guide_name || '',
       department: fb.department || '',
@@ -234,15 +184,6 @@ export default function GuideFeedbackPage() {
       problem_solving: fb.problem_solving || '',
       initiative_innovation: fb.initiative_innovation || '',
       learning_adaptability: fb.learning_adaptability || '',
-      communication: fb.communication || '',
-      professionalism_ethics: fb.professionalism_ethics || '',
-      respect_authority: fb.respect_authority || '',
-      accountability: fb.accountability || '',
-      teamwork: fb.teamwork || '',
-      conflict_resolution: fb.conflict_resolution || '',
-      empathy: fb.empathy || '',
-      leadership_potential: fb.leadership_potential || '',
-      conflict_handling: fb.conflict_handling || '',
       attendance_punctuality: fb.attendance_punctuality || '',
     });
     setEditingId(fb.id);
@@ -349,7 +290,7 @@ export default function GuideFeedbackPage() {
           <div>
             <h1 className="text-3xl font-extrabold text-tata-navy tracking-tight">👨‍🏫 Guide Feedback Management</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Tata Motors Guide Feedback Excel format (Q5–Q19). Q10 (Attendance) is excluded from Guide Score.
+              Tata Motors Guide Feedback Excel format (Q5–Q10). Q10 (Attendance) is excluded from Guide Score.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -363,17 +304,17 @@ export default function GuideFeedbackPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2 bg-gradient-to-r from-emerald-100 to-teal-100 p-5 rounded-2xl border-l-4 border-emerald-500 flex flex-col justify-between">
             <div>
-              <h3 className="font-bold text-emerald-950 flex items-center gap-2">📊 Scoring Rules (Tata Motors Format)</h3>
+              <h3 className="font-bold text-emerald-955 flex items-center gap-2">📊 Scoring Rules (Tata Motors Format)</h3>
               <p className="text-xs text-emerald-900 mt-1 leading-relaxed">
-                Excel uses <strong>Q5–Q19</strong> Score columns (1–5 each). <strong>Q10 (Attendance & Punctuality)</strong> is stored but does NOT contribute to Guide Score. 
-                The score is calculated based on Q5–Q9 + Q11–Q19 (14 dimensions, Max = 70).
+                Excel uses <strong>Q5–Q10</strong> Score columns (1–5 each). <strong>Q10 (Attendance & Punctuality)</strong> is stored but does NOT contribute to Guide Score. 
+                The score is calculated based on Q5–Q9 (5 dimensions, Max = 25).
               </p>
               <div className="mt-2 space-y-1">
                 <code className="block text-xs font-mono bg-emerald-950/10 p-2 rounded text-emerald-900">
-                  Guide Score = (Sum of Q5–Q9 + Q11–Q19) / 70 × 100
+                  Guide Score = (Sum of Q5–Q9) / 25 × 100
                 </code>
                 <code className="block text-xs font-mono bg-emerald-950/10 p-2 rounded text-emerald-900">
-                  Percentage  = (Total of Q5–Q19) / 75 × 100
+                  Percentage  = (Total of Q5–Q10) / 30 × 100
                 </code>
               </div>
             </div>
@@ -557,7 +498,7 @@ export default function GuideFeedbackPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <p className="text-[10px] opacity-75 uppercase font-bold tracking-wider">Total Marks</p>
-                    <p className="text-xl font-black">{calculatedTotalMarks} <span className="text-xs opacity-60">/ 75</span></p>
+                    <p className="text-xl font-black">{calculatedTotalMarks} <span className="text-xs opacity-60">/ 30</span></p>
                   </div>
                   <div className="border-x border-white/20">
                     <p className="text-[10px] opacity-75 uppercase font-bold tracking-wider">Percentage</p>
@@ -628,7 +569,7 @@ export default function GuideFeedbackPage() {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Intern Details</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Candidate Name</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Guide</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Total</th>
@@ -652,7 +593,7 @@ export default function GuideFeedbackPage() {
                           <p className="text-gray-600 text-xs">{fb.department || ''}</p>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <p className="font-bold text-gray-800">{fb.total_marks ? `${fb.total_marks}/75` : ''}</p>
+                          <p className="font-bold text-gray-800">{fb.total_marks ? `${fb.total_marks}/30` : ''}</p>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {fb.total_marks ? (

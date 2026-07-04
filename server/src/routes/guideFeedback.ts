@@ -24,21 +24,12 @@ router.post('/', async (req, res) => {
       review_id,
       guide_name,
       department,
-      teamwork,
-      communication,
       task_completion,
       quality_of_work,
       problem_solving,
       initiative_innovation,
       learning_adaptability,
       attendance_punctuality,
-      professionalism_ethics,
-      respect_authority,
-      accountability,
-      conflict_resolution,
-      empathy,
-      leadership_potential,
-      conflict_handling,
     } = req.body;
 
     if (!intern_id) {
@@ -55,8 +46,7 @@ router.post('/', async (req, res) => {
 
     const scoreFields = [
       'task_completion', 'quality_of_work', 'problem_solving', 'initiative_innovation', 'learning_adaptability',
-      'attendance_punctuality', 'communication', 'professionalism_ethics', 'respect_authority', 'accountability',
-      'teamwork', 'conflict_resolution', 'empathy', 'leadership_potential', 'conflict_handling'
+      'attendance_punctuality'
     ];
     for (const field of scoreFields) {
       const score = req.body[field];
@@ -74,21 +64,12 @@ router.post('/', async (req, res) => {
       review_id: review_id || undefined,
       guide_name,
       department,
-      teamwork: Number(teamwork),
-      communication: Number(communication),
       task_completion: Number(task_completion),
-      quality_of_work: quality_of_work !== undefined ? Number(quality_of_work) : undefined,
-      problem_solving: problem_solving !== undefined ? Number(problem_solving) : undefined,
-      initiative_innovation: initiative_innovation !== undefined ? Number(initiative_innovation) : undefined,
-      learning_adaptability: learning_adaptability !== undefined ? Number(learning_adaptability) : undefined,
-      attendance_punctuality: attendance_punctuality !== undefined ? Number(attendance_punctuality) : undefined,
-      professionalism_ethics: professionalism_ethics !== undefined ? Number(professionalism_ethics) : undefined,
-      respect_authority: respect_authority !== undefined ? Number(respect_authority) : undefined,
-      accountability: accountability !== undefined ? Number(accountability) : undefined,
-      conflict_resolution: conflict_resolution !== undefined ? Number(conflict_resolution) : undefined,
-      empathy: empathy !== undefined ? Number(empathy) : undefined,
-      leadership_potential: leadership_potential !== undefined ? Number(leadership_potential) : undefined,
-      conflict_handling: conflict_handling !== undefined ? Number(conflict_handling) : undefined,
+      quality_of_work: Number(quality_of_work),
+      problem_solving: Number(problem_solving),
+      initiative_innovation: Number(initiative_innovation),
+      learning_adaptability: Number(learning_adaptability),
+      attendance_punctuality: Number(attendance_punctuality),
     });
 
     res.json(feedback);
@@ -114,15 +95,6 @@ router.put('/:id', async (req, res) => {
       initiative_innovation,
       learning_adaptability,
       attendance_punctuality,
-      communication,
-      professionalism_ethics,
-      respect_authority,
-      accountability,
-      teamwork,
-      conflict_resolution,
-      empathy,
-      leadership_potential,
-      conflict_handling,
     } = req.body;
 
     const existing = await prisma.guideFeedback.findUnique({
@@ -141,8 +113,7 @@ router.put('/:id', async (req, res) => {
 
     const scoreFields = [
       'task_completion', 'quality_of_work', 'problem_solving', 'initiative_innovation', 'learning_adaptability',
-      'attendance_punctuality', 'communication', 'professionalism_ethics', 'respect_authority', 'accountability',
-      'teamwork', 'conflict_resolution', 'empathy', 'leadership_potential', 'conflict_handling'
+      'attendance_punctuality'
     ];
     for (const field of scoreFields) {
       const score = req.body[field];
@@ -168,15 +139,6 @@ router.put('/:id', async (req, res) => {
       initiative_innovation: initiative_innovation !== undefined ? Number(initiative_innovation) : existing.initiative_innovation,
       learning_adaptability: learning_adaptability !== undefined ? Number(learning_adaptability) : existing.learning_adaptability,
       attendance_punctuality: attendance_punctuality !== undefined ? Number(attendance_punctuality) : existing.attendance_punctuality,
-      communication: communication !== undefined ? Number(communication) : existing.communication,
-      professionalism_ethics: professionalism_ethics !== undefined ? Number(professionalism_ethics) : existing.professionalism_ethics,
-      respect_authority: respect_authority !== undefined ? Number(respect_authority) : existing.respect_authority,
-      accountability: accountability !== undefined ? Number(accountability) : existing.accountability,
-      teamwork: teamwork !== undefined ? Number(teamwork) : existing.teamwork,
-      conflict_resolution: conflict_resolution !== undefined ? Number(conflict_resolution) : existing.conflict_resolution,
-      empathy: empathy !== undefined ? Number(empathy) : existing.empathy,
-      leadership_potential: leadership_potential !== undefined ? Number(leadership_potential) : existing.leadership_potential,
-      conflict_handling: conflict_handling !== undefined ? Number(conflict_handling) : existing.conflict_handling,
     });
 
     // Recalculate final evaluations
@@ -231,7 +193,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     if (parsedRecords.length === 0) {
-      return res.status(400).json({ error: 'No records found in Excel file. Ensure the file has P.No column.' });
+      return res.status(400).json({ error: 'No records found in Excel file. Ensure the file has P No column.' });
     }
 
     const errors: { row: number; error: string }[] = [];
@@ -244,19 +206,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       const rowNum = record.rowNum;
 
       if (!record.p_no) {
-        errors.push({ row: rowNum, error: `Row ${rowNum} : P.No is empty` });
+        errors.push({ row: rowNum, error: `Row ${rowNum} : P No is empty` });
         continue;
       }
 
       if (seenPnos.has(record.p_no)) {
-        warnings.push({ row: rowNum, warning: `Row ${rowNum} : Duplicate Guide Feedback entry for P.No ${record.p_no} in file` });
+        warnings.push({ row: rowNum, warning: `Row ${rowNum} : Duplicate Guide Feedback entry for P No ${record.p_no} in file` });
         continue;
       }
       seenPnos.add(record.p_no);
 
-      // Validate Q5-Q19 scores
+      // Validate Q5-Q10 scores
       let scoreErrorFound = false;
-      for (let q = 5; q <= 19; q++) {
+      for (let q = 5; q <= 10; q++) {
         const score = record.scores[`Q${q}`];
         if (score === null || score === undefined) {
           warnings.push({ row: rowNum, warning: `Row ${rowNum} : Q${q} Score is blank` });
@@ -276,7 +238,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
       if (scoreErrorFound) continue;
 
-      // Match intern ONLY by P.No
+      // Match intern ONLY by P No
       const intern = await prisma.intern.findFirst({
         where: { p_no: record.p_no },
       });
@@ -284,7 +246,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       if (!intern) {
         warnings.push({
           row: rowNum,
-          warning: `Row ${rowNum} : P.No ${record.p_no} not found in Intern database`,
+          warning: `Row ${rowNum} : P No ${record.p_no} not found in Intern database`,
         });
         continue;
       }
@@ -308,15 +270,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           initiative_innovation: record.scores['Q8'] ?? 0,
           learning_adaptability: record.scores['Q9'] ?? 0,
           attendance_punctuality: record.scores['Q10'] ?? 0,
-          communication: record.scores['Q11'] ?? 0,
-          professionalism_ethics: record.scores['Q12'] ?? 0,
-          respect_authority: record.scores['Q13'] ?? 0,
-          accountability: record.scores['Q14'] ?? 0,
-          teamwork: record.scores['Q15'] ?? 0,
-          conflict_resolution: record.scores['Q16'] ?? 0,
-          empathy: record.scores['Q17'] ?? 0,
-          leadership_potential: record.scores['Q18'] ?? 0,
-          conflict_handling: record.scores['Q19'] ?? 0,
         });
         successCount++;
       } catch (err: any) {
@@ -356,6 +309,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (tempPath) deleteTempFile(tempPath);
   }
 });
+
 // GET /api/guide-feedback — List all guide feedbacks
 router.get('/', async (req, res) => {
   try {

@@ -4,6 +4,8 @@ import {
   getAllFinalEvaluations,
   getFinalEvaluationByInternId,
   deleteFinalEvaluation,
+  createOrUpdateFinalEvaluation,
+  updateFinalEvaluation,
 } from '../services/finalEvaluationService';
 
 const router = express.Router();
@@ -47,6 +49,36 @@ router.get('/', async (req, res) => {
   }
 });
 
+// POST /api/final-evaluation — Create/upsert final evaluation
+router.post('/', async (req, res) => {
+  try {
+    const { p_no, attendance_score, guide_score, project_score, remarks, review_id } = req.body;
+    if (!p_no) {
+      return res.status(400).json({ error: 'P No is required' });
+    }
+    if (attendance_score === undefined || attendance_score === null) {
+      return res.status(400).json({ error: 'Attendance score is required' });
+    }
+    if (guide_score === undefined || guide_score === null) {
+      return res.status(400).json({ error: 'Guide score is required' });
+    }
+
+    const evaluation = await createOrUpdateFinalEvaluation({
+      p_no,
+      attendance_score: Number(attendance_score),
+      guide_score: Number(guide_score),
+      project_score: project_score !== undefined && project_score !== null && project_score !== '' ? Number(project_score) : null,
+      remarks: remarks ?? '',
+      review_id: review_id || null,
+    });
+
+    res.status(201).json(evaluation);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Failed to create final evaluation' });
+  }
+});
+
 // GET /api/final-evaluation/:internId — Single intern evaluation
 router.get('/:internId', async (req, res) => {
   try {
@@ -63,6 +95,32 @@ router.get('/:internId', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch final evaluation' });
+  }
+});
+
+// PUT /api/final-evaluation/:internId — Update final evaluation
+router.put('/:internId', async (req, res) => {
+  try {
+    const { attendance_score, guide_score, project_score, remarks, review_id } = req.body;
+    if (attendance_score === undefined || attendance_score === null) {
+      return res.status(400).json({ error: 'Attendance score is required' });
+    }
+    if (guide_score === undefined || guide_score === null) {
+      return res.status(400).json({ error: 'Guide score is required' });
+    }
+
+    const evaluation = await updateFinalEvaluation(req.params.internId, {
+      attendance_score: Number(attendance_score),
+      guide_score: Number(guide_score),
+      project_score: project_score !== undefined && project_score !== null && project_score !== '' ? Number(project_score) : null,
+      remarks: remarks ?? '',
+      review_id: review_id || null,
+    });
+
+    res.json(evaluation);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Failed to update final evaluation' });
   }
 });
 

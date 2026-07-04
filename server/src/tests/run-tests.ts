@@ -248,28 +248,18 @@ async function runTests() {
     },
   });
 
-  // Set all 14 non-attendance dimensions to 5 -> 100% for intern 1 (updated to 4 -> 80% below)
+  // Set all 5 performance dimensions to 5 -> 100% for intern 1 (updated to 4 -> 80% below)
   const feedback = await upsertGuideFeedback({
     intern_id: intern.intern_id,
     review_id: review.id,
     guide_name: 'Mentor X',
-    discipline: 5,
-    learning_ability: 5,
-    teamwork: 5,
-    communication: 5,
+    department: 'IT',
     task_completion: 5,
     quality_of_work: 5,
     problem_solving: 5,
     initiative_innovation: 5,
     learning_adaptability: 5,
     attendance_punctuality: 5, // Excluded from guide_score
-    professionalism_ethics: 5,
-    respect_authority: 5,
-    accountability: 5,
-    conflict_resolution: 5,
-    empathy: 5,
-    leadership_potential: 5,
-    conflict_handling: 5,
   });
   await assert(feedback.guide_score === 100, 'Guide score should be 100%');
 
@@ -278,23 +268,13 @@ async function runTests() {
     intern_id: intern2.intern_id,
     review_id: review.id,
     guide_name: 'Mentor Y',
-    discipline: 5,
-    learning_ability: 5,
-    teamwork: 5,
-    communication: 5,
+    department: 'Operations',
     task_completion: 5,
     quality_of_work: 5,
     problem_solving: 5,
     initiative_innovation: 5,
     learning_adaptability: 5,
     attendance_punctuality: 5,
-    professionalism_ethics: 5,
-    respect_authority: 5,
-    accountability: 5,
-    conflict_resolution: 5,
-    empathy: 5,
-    leadership_potential: 5,
-    conflict_handling: 5,
   });
   await assert(feedback2.guide_score === 100, 'Guide feedback 2 score should be 100%');
 
@@ -303,23 +283,13 @@ async function runTests() {
     intern_id: intern3.intern_id,
     review_id: review.id,
     guide_name: 'Mentor Z',
-    discipline: 5,
-    learning_ability: 5,
-    teamwork: 5,
-    communication: 5,
+    department: 'IT',
     task_completion: 5,
     quality_of_work: 5,
     problem_solving: 5,
     initiative_innovation: 5,
     learning_adaptability: 5,
     attendance_punctuality: 5,
-    professionalism_ethics: 5,
-    respect_authority: 5,
-    accountability: 5,
-    conflict_resolution: 5,
-    empathy: 5,
-    leadership_potential: 5,
-    conflict_handling: 5,
   });
   await assert(feedback3.guide_score === 100, 'Guide feedback 3 score should be 100%');
 
@@ -327,28 +297,18 @@ async function runTests() {
   const fetched = await getGuideFeedbackByInternId(intern.intern_id, review.id);
   await assert(fetched !== null && fetched.guide_name === 'Mentor X', 'Should fetch guide feedback successfully');
 
-  // Update all 14 non-attendance dimensions to 4 -> 80%
+  // Update all 5 performance dimensions to 4 -> 80%
   const updatedFeedback = await upsertGuideFeedback({
     intern_id: intern.intern_id,
     review_id: review.id,
     guide_name: 'Mentor X Updated',
-    discipline: 4,
-    learning_ability: 4,
-    teamwork: 4,
-    communication: 4,
+    department: 'IT',
     task_completion: 4,
     quality_of_work: 4,
     problem_solving: 4,
     initiative_innovation: 4,
     learning_adaptability: 4,
     attendance_punctuality: 5, // Excluded from guide_score
-    professionalism_ethics: 4,
-    respect_authority: 4,
-    accountability: 4,
-    conflict_resolution: 4,
-    empathy: 4,
-    leadership_potential: 4,
-    conflict_handling: 4,
   });
   await assert(updatedFeedback.guide_score === 80, 'Guide score should be updated to 80%');
 

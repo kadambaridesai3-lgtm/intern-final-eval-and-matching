@@ -376,7 +376,7 @@ export default function SmartCardAttendance() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Search by name or Personal No..."
+                placeholder="Search by Candidate Name or P No..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="input max-w-xs text-xs"
@@ -430,8 +430,8 @@ export default function SmartCardAttendance() {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Intern Details</th>
-                    <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Punch Date</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Candidate Name</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">In Time</th>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Out Time</th>
                     <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Working Hours</th>

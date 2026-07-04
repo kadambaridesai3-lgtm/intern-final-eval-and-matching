@@ -1,5 +1,6 @@
 import { getPrisma } from '../lib/prisma';
 import XLSX from 'xlsx';
+import { cleanPNo, validateExcelHeaders, toText } from '../utils/excel';
 
 const prisma = getPrisma();
 
@@ -58,18 +59,6 @@ export function calculateGuideFeedbackScores(data: {
   initiative_innovation: number; // Q8
   learning_adaptability: number; // Q9
   attendance_punctuality: number; // Q10 — excluded from guide_score
-  communication: number;        // Q11
-  professionalism_ethics: number; // Q12
-  respect_authority: number;    // Q13
-  accountability: number;       // Q14
-  teamwork: number;             // Q15
-  conflict_resolution: number;  // Q16
-  empathy: number;              // Q17
-  leadership_potential: number; // Q18
-  conflict_handling: number;    // Q19
-  // Legacy fields mapped through
-  discipline?: number;
-  learning_ability?: number;
 }) {
   const q5  = data.task_completion;
   const q6  = data.quality_of_work;
@@ -77,25 +66,16 @@ export function calculateGuideFeedbackScores(data: {
   const q8  = data.initiative_innovation;
   const q9  = data.learning_adaptability;
   const q10 = data.attendance_punctuality;
-  const q11 = data.communication;
-  const q12 = data.professionalism_ethics;
-  const q13 = data.respect_authority;
-  const q14 = data.accountability;
-  const q15 = data.teamwork;
-  const q16 = data.conflict_resolution;
-  const q17 = data.empathy;
-  const q18 = data.leadership_potential;
-  const q19 = data.conflict_handling;
 
-  // Total = sum of all 15 (max 75)
-  const total_marks = q5 + q6 + q7 + q8 + q9 + q10 + q11 + q12 + q13 + q14 + q15 + q16 + q17 + q18 + q19;
+  // Total = sum of all 6 (max 30)
+  const total_marks = q5 + q6 + q7 + q8 + q9 + q10;
 
-  // Percentage = (Total / 75) × 100
-  const percentage = (total_marks / 75) * 100;
+  // Percentage = (Total / 30) × 100
+  const percentage = (total_marks / 30) * 100;
 
-  // Guide Score = (sum excluding Q10) / 70 × 100
-  const obtainedMarksExclQ10 = q5 + q6 + q7 + q8 + q9 + q11 + q12 + q13 + q14 + q15 + q16 + q17 + q18 + q19;
-  const guide_score = (obtainedMarksExclQ10 / 70) * 100;
+  // Guide Score = (sum of Q5–Q9, excluding Q10) / 25 × 100
+  const obtainedMarksExclQ10 = q5 + q6 + q7 + q8 + q9;
+  const guide_score = (obtainedMarksExclQ10 / 25) * 100;
 
   console.log('[GuideFeedback] total:', total_marks, 'percentage:', percentage.toFixed(2), 'guide_score:', guide_score.toFixed(2), '(Q10 excluded)');
 
@@ -113,42 +93,20 @@ export async function upsertGuideFeedback(data: {
   review_id?: string;
   guide_name?: string;
   department?: string;
-  discipline?: number;
-  learning_ability?: number;
-  teamwork: number;
-  communication: number;
-  task_completion: number;
-  quality_of_work?: number;
-  problem_solving?: number;
-  initiative_innovation?: number;
-  learning_adaptability?: number;
-  attendance_punctuality?: number;
-  professionalism_ethics?: number;
-  respect_authority?: number;
-  accountability?: number;
-  conflict_resolution?: number;
-  empathy?: number;
-  leadership_potential?: number;
-  conflict_handling?: number;
+  task_completion: number;      // Q5
+  quality_of_work: number;      // Q6
+  problem_solving: number;      // Q7
+  initiative_innovation: number; // Q8
+  learning_adaptability: number; // Q9
+  attendance_punctuality: number; // Q10
 }) {
   const parsed = {
-    discipline: toNumericScore(data.discipline ?? 0),
-    learning_ability: toNumericScore(data.learning_ability ?? 0),
-    teamwork: toNumericScore(data.teamwork),
-    communication: toNumericScore(data.communication),
     task_completion: toNumericScore(data.task_completion),
-    quality_of_work: toNumericScore(data.quality_of_work ?? 0),
-    problem_solving: toNumericScore(data.problem_solving ?? 0),
-    initiative_innovation: toNumericScore(data.initiative_innovation ?? 0),
-    learning_adaptability: toNumericScore(data.learning_adaptability ?? 0),
-    attendance_punctuality: toNumericScore(data.attendance_punctuality ?? 0),
-    professionalism_ethics: toNumericScore(data.professionalism_ethics ?? 0),
-    respect_authority: toNumericScore(data.respect_authority ?? 0),
-    accountability: toNumericScore(data.accountability ?? 0),
-    conflict_resolution: toNumericScore(data.conflict_resolution ?? 0),
-    empathy: toNumericScore(data.empathy ?? 0),
-    leadership_potential: toNumericScore(data.leadership_potential ?? 0),
-    conflict_handling: toNumericScore(data.conflict_handling ?? 0),
+    quality_of_work: toNumericScore(data.quality_of_work),
+    problem_solving: toNumericScore(data.problem_solving),
+    initiative_innovation: toNumericScore(data.initiative_innovation),
+    learning_adaptability: toNumericScore(data.learning_adaptability),
+    attendance_punctuality: toNumericScore(data.attendance_punctuality),
   };
 
   const { total_marks, percentage, guide_score } = calculateGuideFeedbackScores(parsed);
@@ -165,23 +123,23 @@ export async function upsertGuideFeedback(data: {
   const writeData = {
     guide_name: data.guide_name || null,
     department: data.department || '',
-    discipline: parsed.discipline,
-    learning_ability: parsed.learning_ability,
-    teamwork: parsed.teamwork,
-    communication: parsed.communication,
+    discipline: 0,
+    learning_ability: 0,
+    teamwork: 0,
+    communication: 0,
     task_completion: parsed.task_completion,
     quality_of_work: parsed.quality_of_work,
     problem_solving: parsed.problem_solving,
     initiative_innovation: parsed.initiative_innovation,
     learning_adaptability: parsed.learning_adaptability,
     attendance_punctuality: parsed.attendance_punctuality,
-    professionalism_ethics: parsed.professionalism_ethics,
-    respect_authority: parsed.respect_authority,
-    accountability: parsed.accountability,
-    conflict_resolution: parsed.conflict_resolution,
-    empathy: parsed.empathy,
-    leadership_potential: parsed.leadership_potential,
-    conflict_handling: parsed.conflict_handling,
+    professionalism_ethics: 0,
+    respect_authority: 0,
+    accountability: 0,
+    conflict_resolution: 0,
+    empathy: 0,
+    leadership_potential: 0,
+    conflict_handling: 0,
     total_marks,
     percentage,
     guide_score,
@@ -278,17 +236,33 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
+  
+  // Get all headers from row 1
+  const headerRow = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0] as string[];
+  const headers = (headerRow || []).map(h => String(h || '').trim());
+
+  const EXPECTED_FEEDBACK_HEADERS = [
+    'P No',
+    'Candidate Name',
+    'Guide Name',
+    'Department',
+    'Q5',
+    'Q6',
+    'Q7',
+    'Q8',
+    'Q9',
+    'Q10',
+    'Guide Score',
+    'Remarks'
+  ];
+
+  const headerError = validateExcelHeaders(headers, EXPECTED_FEEDBACK_HEADERS);
+  if (headerError) {
+    throw new Error(headerError);
+  }
+
   const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
   console.log('[GuideFeedback] Parsed', rows.length, 'rows from Excel');
-
-  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
-    const rowKeys = Object.keys(row);
-    const matchKey = rowKeys.find(k => 
-      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
-    );
-    return matchKey !== undefined ? row[matchKey] : '';
-  };
 
   const parsed: RawFeedbackRow[] = [];
 
@@ -301,15 +275,14 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
       continue;
     }
 
-    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
-    const candidate_name = String(pickCell(row, ['Candidate Name', 'Intern Name', 'Name'])).trim();
-    const guide_name = String(pickCell(row, ['Guide Name'])).trim();
-    const department = String(pickCell(row, ['Department', 'Dept.Name', 'Department Name'])).trim();
+    const p_no = cleanPNo(row['P No']);
+    const candidate_name = toText(row['Candidate Name']);
+    const guide_name = toText(row['Guide Name']);
+    const department = toText(row['Department']);
 
     const scores: Record<string, number | null> = {};
-    for (let q = 5; q <= 19; q++) {
-      // Accept new standard name (Q5) first, then legacy names (Q5 Score, Q5 Ans, etc.)
-      const val = pickCell(row, [`Q${q}`, `Q${q} Score`, `${q} Ans`, `${q}Ans`, `${q}.Ans`, `${q} ans`]);
+    for (let q = 5; q <= 10; q++) {
+      const val = row[`Q${q}`];
       if (val === undefined || val === null || val === '') {
         scores[`Q${q}`] = null;
       } else {
@@ -318,8 +291,13 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
       }
     }
 
-    const excel_total = Number(pickCell(row, ['Total']) || 0);
-    const excel_percentage = Number(pickCell(row, ['Percentage']) || 0);
+    // Set Q11-Q19 to null for completeness
+    for (let q = 11; q <= 19; q++) {
+      scores[`Q${q}`] = null;
+    }
+
+    const excel_total = Number(row['Guide Score'] || 0); // we can read it, but we calculate it ourselves
+    const excel_percentage = Number(row['Guide Score'] || 0);
 
     parsed.push({
       p_no,
@@ -341,24 +319,20 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
 export function generateSampleExcel(): Buffer {
   const wb = XLSX.utils.book_new();
 
-  // Standard corporate headers per module spec
   const headers = [
     'P No', 'Candidate Name', 'Guide Name', 'Department',
     'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10',
-    'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16',
-    'Q17', 'Q18', 'Q19', 'Guide Score', 'Remarks'
+    'Guide Score', 'Remarks'
   ];
 
-  // Sample row
   const sampleRow = [
-    '12345', 'John Doe', 'Dr. Smith', 'Mechanical Engineering',
-    4, 5, 3, 4, 5, 4, 3, 4, 5, 4, 3, 4, 5, 4, 3,
-    82.67, 'Good Performer'
+    '106245', 'Rahul Sharma', 'Santosh Ghanwat', 'Development',
+    4, 5, 3, 4, 5, 4,
+    84.0, 'Good Performer'
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
 
-  // Set column widths
   ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 12) }));
 
   XLSX.utils.book_append_sheet(wb, ws, 'Guide Feedback');
