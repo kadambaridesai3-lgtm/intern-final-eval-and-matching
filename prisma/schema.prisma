@@ -186,30 +186,29 @@ model GuideFeedback {
   review_id              String?
   guide_name             String?
   department             String?  @default("")
-  discipline             Int?
-  learning_ability       Int?
-  teamwork               Int?
-  communication          Int?
-  task_completion        Int?
+  discipline             Int      @default(0)
+  learning_ability       Int      @default(0)
+  teamwork               Int      @default(0)
+  communication          Int      @default(0)
+  task_completion        Int      @default(0)
   
   // New dimensions
-  quality_of_work        Int?
-  problem_solving        Int?
-  initiative_innovation  Int?
-  learning_adaptability  Int?
-  attendance_punctuality Int?
-  professionalism_ethics Int?
-  respect_authority      Int?
-  accountability         Int?
-  conflict_resolution    Int?
-  empathy                Int?
-  leadership_potential   Int?
-  conflict_handling      Int?
+  quality_of_work        Int      @default(0)
+  problem_solving        Int      @default(0)
+  initiative_innovation  Int      @default(0)
+  learning_adaptability  Int      @default(0)
+  attendance_punctuality Int      @default(0)
+  professionalism_ethics Int      @default(0)
+  respect_authority      Int      @default(0)
+  accountability         Int      @default(0)
+  conflict_resolution    Int      @default(0)
+  empathy                Int      @default(0)
+  leadership_potential   Int      @default(0)
+  conflict_handling      Int      @default(0)
 
   total_marks            Int      @default(0)
   guide_score            Float    @default(0)
   percentage             Float    @default(0)
-  remarks                String?  @default("")
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
 

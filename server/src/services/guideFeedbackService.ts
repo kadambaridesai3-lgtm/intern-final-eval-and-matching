@@ -27,23 +27,19 @@ export const Q_TO_FIELD: Record<string, string> = {
 
 // ── Score helpers ─────────────────────────────────────────────────────────────
 
-function toOptionalNumericScore(val: any): number | null {
-  if (val === undefined || val === null || val === '') return null;
+function toNumericScore(val: any): number {
+  if (val === undefined || val === null || val === '') return 0;
   const s = String(val).trim().toLowerCase();
-  if (s === '') return null;
-  
   // Direct numeric
-  const parsed = parseInt(s, 10);
+  const parsed = parseInt(s);
   if (!isNaN(parsed) && parsed >= 0) return parsed;
-  
   // Text-based (legacy support)
   if (s.startsWith('best') || s.startsWith('excellent')) return 5;
   if (s.startsWith('good')) return 4;
   if (s.startsWith('average') || s.startsWith('meet')) return 3;
   if (s.startsWith('poor') || s.startsWith('below')) return 2;
   if (s.startsWith('worst') || s.startsWith('needs')) return 1;
-  
-  return null;
+  return 0;
 }
 
 /**
@@ -56,37 +52,40 @@ function toOptionalNumericScore(val: any): number | null {
  * Q10 (attendance_punctuality) is stored but NOT included in guide_score.
  */
 export function calculateGuideFeedbackScores(data: {
-  task_completion: number | null;      // Q5
-  quality_of_work: number | null;      // Q6
-  problem_solving: number | null;      // Q7
-  initiative_innovation: number | null; // Q8
-  learning_adaptability: number | null; // Q9
-  attendance_punctuality: number | null; // Q10 — excluded from guide_score
-  communication: number | null;        // Q11
-  professionalism_ethics: number | null; // Q12
-  respect_authority: number | null;    // Q13
-  accountability: number | null;       // Q14
-  teamwork: number | null;             // Q15
-  conflict_resolution: number | null;  // Q16
-  empathy: number | null;              // Q17
-  leadership_potential: number | null; // Q18
-  conflict_handling: number | null;    // Q19
+  task_completion: number;      // Q5
+  quality_of_work: number;      // Q6
+  problem_solving: number;      // Q7
+  initiative_innovation: number; // Q8
+  learning_adaptability: number; // Q9
+  attendance_punctuality: number; // Q10 — excluded from guide_score
+  communication: number;        // Q11
+  professionalism_ethics: number; // Q12
+  respect_authority: number;    // Q13
+  accountability: number;       // Q14
+  teamwork: number;             // Q15
+  conflict_resolution: number;  // Q16
+  empathy: number;              // Q17
+  leadership_potential: number; // Q18
+  conflict_handling: number;    // Q19
+  // Legacy fields mapped through
+  discipline?: number;
+  learning_ability?: number;
 }) {
-  const q5  = data.task_completion ?? 0;
-  const q6  = data.quality_of_work ?? 0;
-  const q7  = data.problem_solving ?? 0;
-  const q8  = data.initiative_innovation ?? 0;
-  const q9  = data.learning_adaptability ?? 0;
-  const q10 = data.attendance_punctuality ?? 0;
-  const q11 = data.communication ?? 0;
-  const q12 = data.professionalism_ethics ?? 0;
-  const q13 = data.respect_authority ?? 0;
-  const q14 = data.accountability ?? 0;
-  const q15 = data.teamwork ?? 0;
-  const q16 = data.conflict_resolution ?? 0;
-  const q17 = data.empathy ?? 0;
-  const q18 = data.leadership_potential ?? 0;
-  const q19 = data.conflict_handling ?? 0;
+  const q5  = data.task_completion;
+  const q6  = data.quality_of_work;
+  const q7  = data.problem_solving;
+  const q8  = data.initiative_innovation;
+  const q9  = data.learning_adaptability;
+  const q10 = data.attendance_punctuality;
+  const q11 = data.communication;
+  const q12 = data.professionalism_ethics;
+  const q13 = data.respect_authority;
+  const q14 = data.accountability;
+  const q15 = data.teamwork;
+  const q16 = data.conflict_resolution;
+  const q17 = data.empathy;
+  const q18 = data.leadership_potential;
+  const q19 = data.conflict_handling;
 
   // Total = sum of all 15 (max 75)
   const total_marks = q5 + q6 + q7 + q8 + q9 + q10 + q11 + q12 + q13 + q14 + q15 + q16 + q17 + q18 + q19;
@@ -114,43 +113,42 @@ export async function upsertGuideFeedback(data: {
   review_id?: string;
   guide_name?: string;
   department?: string;
-  discipline?: number | null;
-  learning_ability?: number | null;
-  teamwork: number | null;
-  communication: number | null;
-  task_completion: number | null;
-  quality_of_work?: number | null;
-  problem_solving?: number | null;
-  initiative_innovation?: number | null;
-  learning_adaptability?: number | null;
-  attendance_punctuality?: number | null;
-  professionalism_ethics?: number | null;
-  respect_authority?: number | null;
-  accountability?: number | null;
-  conflict_resolution?: number | null;
-  empathy?: number | null;
-  leadership_potential?: number | null;
-  conflict_handling?: number | null;
-  remarks?: string | null;
+  discipline?: number;
+  learning_ability?: number;
+  teamwork: number;
+  communication: number;
+  task_completion: number;
+  quality_of_work?: number;
+  problem_solving?: number;
+  initiative_innovation?: number;
+  learning_adaptability?: number;
+  attendance_punctuality?: number;
+  professionalism_ethics?: number;
+  respect_authority?: number;
+  accountability?: number;
+  conflict_resolution?: number;
+  empathy?: number;
+  leadership_potential?: number;
+  conflict_handling?: number;
 }) {
   const parsed = {
-    discipline: data.discipline !== undefined ? toOptionalNumericScore(data.discipline) : null,
-    learning_ability: data.learning_ability !== undefined ? toOptionalNumericScore(data.learning_ability) : null,
-    teamwork: toOptionalNumericScore(data.teamwork),
-    communication: toOptionalNumericScore(data.communication),
-    task_completion: toOptionalNumericScore(data.task_completion),
-    quality_of_work: toOptionalNumericScore(data.quality_of_work),
-    problem_solving: toOptionalNumericScore(data.problem_solving),
-    initiative_innovation: toOptionalNumericScore(data.initiative_innovation),
-    learning_adaptability: toOptionalNumericScore(data.learning_adaptability),
-    attendance_punctuality: toOptionalNumericScore(data.attendance_punctuality),
-    professionalism_ethics: toOptionalNumericScore(data.professionalism_ethics),
-    respect_authority: toOptionalNumericScore(data.respect_authority),
-    accountability: toOptionalNumericScore(data.accountability),
-    conflict_resolution: toOptionalNumericScore(data.conflict_resolution),
-    empathy: toOptionalNumericScore(data.empathy),
-    leadership_potential: toOptionalNumericScore(data.leadership_potential),
-    conflict_handling: toOptionalNumericScore(data.conflict_handling),
+    discipline: toNumericScore(data.discipline ?? 0),
+    learning_ability: toNumericScore(data.learning_ability ?? 0),
+    teamwork: toNumericScore(data.teamwork),
+    communication: toNumericScore(data.communication),
+    task_completion: toNumericScore(data.task_completion),
+    quality_of_work: toNumericScore(data.quality_of_work ?? 0),
+    problem_solving: toNumericScore(data.problem_solving ?? 0),
+    initiative_innovation: toNumericScore(data.initiative_innovation ?? 0),
+    learning_adaptability: toNumericScore(data.learning_adaptability ?? 0),
+    attendance_punctuality: toNumericScore(data.attendance_punctuality ?? 0),
+    professionalism_ethics: toNumericScore(data.professionalism_ethics ?? 0),
+    respect_authority: toNumericScore(data.respect_authority ?? 0),
+    accountability: toNumericScore(data.accountability ?? 0),
+    conflict_resolution: toNumericScore(data.conflict_resolution ?? 0),
+    empathy: toNumericScore(data.empathy ?? 0),
+    leadership_potential: toNumericScore(data.leadership_potential ?? 0),
+    conflict_handling: toNumericScore(data.conflict_handling ?? 0),
   };
 
   const { total_marks, percentage, guide_score } = calculateGuideFeedbackScores(parsed);
@@ -187,7 +185,6 @@ export async function upsertGuideFeedback(data: {
     total_marks,
     percentage,
     guide_score,
-    remarks: data.remarks || '',
   };
 
   if (existing) {
@@ -272,9 +269,8 @@ export interface RawFeedbackRow {
   guide_name: string;
   department: string;
   scores: Record<string, number | null>;
-  excel_total: number | null;
-  excel_percentage: number | null;
-  remarks: string;
+  excel_total: number;
+  excel_percentage: number;
   rowNum: number;
 }
 
@@ -282,15 +278,22 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  // raw: false formatted values preserves leading zeros as text strings
-  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+  const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
   console.log('[GuideFeedback] Parsed', rows.length, 'rows from Excel');
+
+  const pickCell = (row: Record<string, unknown>, keys: string[]): any => {
+    const rowKeys = Object.keys(row);
+    const matchKey = rowKeys.find(k => 
+      keys.some(c => k.toLowerCase().replace(/[^a-z0-9]/g, '') === c.toLowerCase().replace(/[^a-z0-9]/g, ''))
+    );
+    return matchKey !== undefined ? row[matchKey] : '';
+  };
 
   const parsed: RawFeedbackRow[] = [];
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i] as Record<string, any>;
+    const row = rows[i];
     const rowNum = i + 2;
 
     const isEmptyRow = Object.values(row).every(val => val === undefined || val === null || String(val).trim() === '');
@@ -298,27 +301,25 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
       continue;
     }
 
-    // Read only the exact Tata Motors headers:
-    const p_no = row['P No'] !== undefined && row['P No'] !== null ? String(row['P No']).trim() : '';
-    const candidate_name = row['Candidate Name'] !== undefined && row['Candidate Name'] !== null ? String(row['Candidate Name']).trim() : '';
-    const guide_name = row['Guide Name'] !== undefined && row['Guide Name'] !== null ? String(row['Guide Name']).trim() : '';
-    const department = row['Department'] !== undefined && row['Department'] !== null ? String(row['Department']).trim() : '';
-    const remarks = row['Remarks'] !== undefined && row['Remarks'] !== null ? String(row['Remarks']).trim() : '';
+    const p_no = String(pickCell(row, ['P No', 'P.No', 'p_no', 'P.no', 'P.No.'])).trim();
+    const candidate_name = String(pickCell(row, ['Candidate Name', 'Intern Name', 'Name'])).trim();
+    const guide_name = String(pickCell(row, ['Guide Name'])).trim();
+    const department = String(pickCell(row, ['Department', 'Dept.Name', 'Department Name'])).trim();
 
     const scores: Record<string, number | null> = {};
     for (let q = 5; q <= 19; q++) {
-      const val = row[`Q${q}`];
-      if (val === undefined || val === null || String(val).trim() === '') {
+      // Accept new standard name (Q5) first, then legacy names (Q5 Score, Q5 Ans, etc.)
+      const val = pickCell(row, [`Q${q}`, `Q${q} Score`, `${q} Ans`, `${q}Ans`, `${q}.Ans`, `${q} ans`]);
+      if (val === undefined || val === null || val === '') {
         scores[`Q${q}`] = null;
       } else {
-        const trimmedVal = String(val).trim();
-        const num = Number(trimmedVal);
-        scores[`Q${q}`] = isNaN(num) ? -1 : num;
+        const num = Number(val);
+        scores[`Q${q}`] = isNaN(num) ? null : num;
       }
     }
 
-    const excel_total = row['Total'] !== undefined && row['Total'] !== null && String(row['Total']).trim() !== '' ? Number(String(row['Total']).trim()) : null;
-    const excel_percentage = row['Percentage'] !== undefined && row['Percentage'] !== null && String(row['Percentage']).trim() !== '' ? Number(String(row['Percentage']).trim()) : null;
+    const excel_total = Number(pickCell(row, ['Total']) || 0);
+    const excel_percentage = Number(pickCell(row, ['Percentage']) || 0);
 
     parsed.push({
       p_no,
@@ -328,7 +329,6 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
       scores,
       excel_total,
       excel_percentage,
-      remarks,
       rowNum
     });
   }
@@ -341,28 +341,22 @@ export function parseGuideFeedbackExcel(filePath: string): RawFeedbackRow[] {
 export function generateSampleExcel(): Buffer {
   const wb = XLSX.utils.book_new();
 
+  // Standard corporate headers per module spec
   const headers = [
     'P No', 'Candidate Name', 'Guide Name', 'Department',
     'Q5', 'Q6', 'Q7', 'Q8', 'Q9', 'Q10',
     'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16',
-    'Q17', 'Q18', 'Q19',
-    'Total', 'Guide Score', 'Percentage', 'Remarks'
+    'Q17', 'Q18', 'Q19', 'Guide Score', 'Remarks'
   ];
 
-  // Populate one sample row with realistic data
+  // Sample row
   const sampleRow = [
-    '012345', 'John Doe', 'Dr. Smith', 'Mechanical Engineering',
-    4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4, 5, 4,
-    66, 87.14, 88.00, 'Excellent performance'
+    '12345', 'John Doe', 'Dr. Smith', 'Mechanical Engineering',
+    4, 5, 3, 4, 5, 4, 3, 4, 5, 4, 3, 4, 5, 4, 3,
+    82.67, 'Good Performer'
   ];
 
   const ws = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
-
-  // Set cell type of P No to string ('s') to preserve leading zero
-  if (ws['A2']) {
-    ws['A2'].t = 's';
-    ws['A2'].v = '012345';
-  }
 
   // Set column widths
   ws['!cols'] = headers.map(h => ({ wch: Math.max(h.length + 2, 12) }));

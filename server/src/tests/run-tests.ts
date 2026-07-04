@@ -396,7 +396,7 @@ async function runTests() {
   await assert(eval3.project_score === null, 'Intern 3 project score should be null');
   await assert(eval3.final_internship_score === null, 'Intern 3 final score should be null');
   await assert(eval3.grade === '', 'Intern 3 grade should be empty string');
-  await assert(eval3.remarks === '', 'Intern 3 remarks should be empty');
+  await assert(eval3.remarks === 'Pending Project Review', 'Intern 3 remarks should be Pending Project Review');
   await assert(eval3.evaluation_method === 'Project + Guide + Attendance', 'Intern 3 evaluation method should be Project + Guide + Attendance');
   await assert(eval3.evaluation_status === 'Pending Project Review', 'Intern 3 status should be Pending Project Review');
 

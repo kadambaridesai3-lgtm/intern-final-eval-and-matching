@@ -24,7 +24,6 @@ router.post('/', async (req, res) => {
       review_id,
       guide_name,
       department,
-      remarks,
       teamwork,
       communication,
       task_completion,
@@ -59,15 +58,14 @@ router.post('/', async (req, res) => {
       'attendance_punctuality', 'communication', 'professionalism_ethics', 'respect_authority', 'accountability',
       'teamwork', 'conflict_resolution', 'empathy', 'leadership_potential', 'conflict_handling'
     ];
-    
     for (const field of scoreFields) {
       const score = req.body[field];
       if (score === undefined || score === null || score === '') {
-        continue; // Empty values allowed
+        return res.status(400).json({ error: `Score for ${field} is missing.` });
       }
       const num = Number(score);
-      if (isNaN(num) || num < 0 || num > 5) {
-        return res.status(400).json({ error: `Score for ${field} must be between 0 and 5.` });
+      if (isNaN(num) || num < 1 || num > 5) {
+        return res.status(400).json({ error: `Score for ${field} must be between 1 and 5.` });
       }
     }
 
@@ -76,22 +74,21 @@ router.post('/', async (req, res) => {
       review_id: review_id || undefined,
       guide_name,
       department,
-      remarks: remarks || '',
-      teamwork: teamwork !== undefined && teamwork !== null && teamwork !== '' ? Number(teamwork) : null,
-      communication: communication !== undefined && communication !== null && communication !== '' ? Number(communication) : null,
-      task_completion: task_completion !== undefined && task_completion !== null && task_completion !== '' ? Number(task_completion) : null,
-      quality_of_work: quality_of_work !== undefined && quality_of_work !== null && quality_of_work !== '' ? Number(quality_of_work) : null,
-      problem_solving: problem_solving !== undefined && problem_solving !== null && problem_solving !== '' ? Number(problem_solving) : null,
-      initiative_innovation: initiative_innovation !== undefined && initiative_innovation !== null && initiative_innovation !== '' ? Number(initiative_innovation) : null,
-      learning_adaptability: learning_adaptability !== undefined && learning_adaptability !== null && learning_adaptability !== '' ? Number(learning_adaptability) : null,
-      attendance_punctuality: attendance_punctuality !== undefined && attendance_punctuality !== null && attendance_punctuality !== '' ? Number(attendance_punctuality) : null,
-      professionalism_ethics: professionalism_ethics !== undefined && professionalism_ethics !== null && professionalism_ethics !== '' ? Number(professionalism_ethics) : null,
-      respect_authority: respect_authority !== undefined && respect_authority !== null && respect_authority !== '' ? Number(respect_authority) : null,
-      accountability: accountability !== undefined && accountability !== null && accountability !== '' ? Number(accountability) : null,
-      conflict_resolution: conflict_resolution !== undefined && conflict_resolution !== null && conflict_resolution !== '' ? Number(conflict_resolution) : null,
-      empathy: empathy !== undefined && empathy !== null && empathy !== '' ? Number(empathy) : null,
-      leadership_potential: leadership_potential !== undefined && leadership_potential !== null && leadership_potential !== '' ? Number(leadership_potential) : null,
-      conflict_handling: conflict_handling !== undefined && conflict_handling !== null && conflict_handling !== '' ? Number(conflict_handling) : null,
+      teamwork: Number(teamwork),
+      communication: Number(communication),
+      task_completion: Number(task_completion),
+      quality_of_work: quality_of_work !== undefined ? Number(quality_of_work) : undefined,
+      problem_solving: problem_solving !== undefined ? Number(problem_solving) : undefined,
+      initiative_innovation: initiative_innovation !== undefined ? Number(initiative_innovation) : undefined,
+      learning_adaptability: learning_adaptability !== undefined ? Number(learning_adaptability) : undefined,
+      attendance_punctuality: attendance_punctuality !== undefined ? Number(attendance_punctuality) : undefined,
+      professionalism_ethics: professionalism_ethics !== undefined ? Number(professionalism_ethics) : undefined,
+      respect_authority: respect_authority !== undefined ? Number(respect_authority) : undefined,
+      accountability: accountability !== undefined ? Number(accountability) : undefined,
+      conflict_resolution: conflict_resolution !== undefined ? Number(conflict_resolution) : undefined,
+      empathy: empathy !== undefined ? Number(empathy) : undefined,
+      leadership_potential: leadership_potential !== undefined ? Number(leadership_potential) : undefined,
+      conflict_handling: conflict_handling !== undefined ? Number(conflict_handling) : undefined,
     });
 
     res.json(feedback);
@@ -111,7 +108,6 @@ router.put('/:id', async (req, res) => {
     const {
       guide_name,
       department,
-      remarks,
       task_completion,
       quality_of_work,
       problem_solving,
@@ -152,11 +148,11 @@ router.put('/:id', async (req, res) => {
       const score = req.body[field];
       if (score !== undefined) {
         if (score === null || score === '') {
-          continue; // Empty values allowed
+          return res.status(400).json({ error: `Score for ${field} is missing.` });
         }
         const num = Number(score);
-        if (isNaN(num) || num < 0 || num > 5) {
-          return res.status(400).json({ error: `Score for ${field} must be between 0 and 5.` });
+        if (isNaN(num) || num < 1 || num > 5) {
+          return res.status(400).json({ error: `Score for ${field} must be between 1 and 5.` });
         }
       }
     }
@@ -166,22 +162,21 @@ router.put('/:id', async (req, res) => {
       review_id: existing.review_id || undefined,
       guide_name: guide_name !== undefined ? guide_name : existing.guide_name,
       department: department !== undefined ? department : existing.department,
-      remarks: remarks !== undefined ? remarks : existing.remarks,
-      task_completion: task_completion !== undefined ? (task_completion === null || task_completion === '' ? null : Number(task_completion)) : existing.task_completion,
-      quality_of_work: quality_of_work !== undefined ? (quality_of_work === null || quality_of_work === '' ? null : Number(quality_of_work)) : existing.quality_of_work,
-      problem_solving: problem_solving !== undefined ? (problem_solving === null || problem_solving === '' ? null : Number(problem_solving)) : existing.problem_solving,
-      initiative_innovation: initiative_innovation !== undefined ? (initiative_innovation === null || initiative_innovation === '' ? null : Number(initiative_innovation)) : existing.initiative_innovation,
-      learning_adaptability: learning_adaptability !== undefined ? (learning_adaptability === null || learning_adaptability === '' ? null : Number(learning_adaptability)) : existing.learning_adaptability,
-      attendance_punctuality: attendance_punctuality !== undefined ? (attendance_punctuality === null || attendance_punctuality === '' ? null : Number(attendance_punctuality)) : existing.attendance_punctuality,
-      communication: communication !== undefined ? (communication === null || communication === '' ? null : Number(communication)) : existing.communication,
-      professionalism_ethics: professionalism_ethics !== undefined ? (professionalism_ethics === null || professionalism_ethics === '' ? null : Number(professionalism_ethics)) : existing.professionalism_ethics,
-      respect_authority: respect_authority !== undefined ? (respect_authority === null || respect_authority === '' ? null : Number(respect_authority)) : existing.respect_authority,
-      accountability: accountability !== undefined ? (accountability === null || accountability === '' ? null : Number(accountability)) : existing.accountability,
-      teamwork: teamwork !== undefined ? (teamwork === null || teamwork === '' ? null : Number(teamwork)) : existing.teamwork,
-      conflict_resolution: conflict_resolution !== undefined ? (conflict_resolution === null || conflict_resolution === '' ? null : Number(conflict_resolution)) : existing.conflict_resolution,
-      empathy: empathy !== undefined ? (empathy === null || empathy === '' ? null : Number(empathy)) : existing.empathy,
-      leadership_potential: leadership_potential !== undefined ? (leadership_potential === null || leadership_potential === '' ? null : Number(leadership_potential)) : existing.leadership_potential,
-      conflict_handling: conflict_handling !== undefined ? (conflict_handling === null || conflict_handling === '' ? null : Number(conflict_handling)) : existing.conflict_handling,
+      task_completion: task_completion !== undefined ? Number(task_completion) : existing.task_completion,
+      quality_of_work: quality_of_work !== undefined ? Number(quality_of_work) : existing.quality_of_work,
+      problem_solving: problem_solving !== undefined ? Number(problem_solving) : existing.problem_solving,
+      initiative_innovation: initiative_innovation !== undefined ? Number(initiative_innovation) : existing.initiative_innovation,
+      learning_adaptability: learning_adaptability !== undefined ? Number(learning_adaptability) : existing.learning_adaptability,
+      attendance_punctuality: attendance_punctuality !== undefined ? Number(attendance_punctuality) : existing.attendance_punctuality,
+      communication: communication !== undefined ? Number(communication) : existing.communication,
+      professionalism_ethics: professionalism_ethics !== undefined ? Number(professionalism_ethics) : existing.professionalism_ethics,
+      respect_authority: respect_authority !== undefined ? Number(respect_authority) : existing.respect_authority,
+      accountability: accountability !== undefined ? Number(accountability) : existing.accountability,
+      teamwork: teamwork !== undefined ? Number(teamwork) : existing.teamwork,
+      conflict_resolution: conflict_resolution !== undefined ? Number(conflict_resolution) : existing.conflict_resolution,
+      empathy: empathy !== undefined ? Number(empathy) : existing.empathy,
+      leadership_potential: leadership_potential !== undefined ? Number(leadership_potential) : existing.leadership_potential,
+      conflict_handling: conflict_handling !== undefined ? Number(conflict_handling) : existing.conflict_handling,
     });
 
     // Recalculate final evaluations
@@ -236,7 +231,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     if (parsedRecords.length === 0) {
-      return res.status(400).json({ error: 'No records found in Excel file. Ensure the file has P No column.' });
+      return res.status(400).json({ error: 'No records found in Excel file. Ensure the file has P.No column.' });
     }
 
     const errors: { row: number; error: string }[] = [];
@@ -249,25 +244,31 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       const rowNum = record.rowNum;
 
       if (!record.p_no) {
-        errors.push({ row: rowNum, error: `Row ${rowNum} : P No is empty` });
+        errors.push({ row: rowNum, error: `Row ${rowNum} : P.No is empty` });
         continue;
       }
 
       if (seenPnos.has(record.p_no)) {
-        errors.push({ row: rowNum, error: `Row ${rowNum} : Duplicate Guide Feedback entry for P No ${record.p_no} in file` });
+        warnings.push({ row: rowNum, warning: `Row ${rowNum} : Duplicate Guide Feedback entry for P.No ${record.p_no} in file` });
         continue;
       }
       seenPnos.add(record.p_no);
 
-      // Validate Q5-Q19 scores (minimum 0, maximum 5, empty/blank/null is allowed)
+      // Validate Q5-Q19 scores
       let scoreErrorFound = false;
       for (let q = 5; q <= 19; q++) {
         const score = record.scores[`Q${q}`];
         if (score === null || score === undefined) {
-          continue; // Ignore blank optional cells
+          warnings.push({ row: rowNum, warning: `Row ${rowNum} : Q${q} Score is blank` });
+          continue; // blank cell accepted, defaults to 0
         }
-        if (score < 0 || score > 5) {
-          errors.push({ row: rowNum, error: `Row ${rowNum} : Q${q} must be between 0 and 5` });
+        if (score < 0) {
+          errors.push({ row: rowNum, error: `Row ${rowNum} : Q${q} Score cannot be negative` });
+          scoreErrorFound = true;
+          break;
+        }
+        if (score > 5) {
+          errors.push({ row: rowNum, error: `Row ${rowNum} : Q${q} Score cannot exceed 5` });
           scoreErrorFound = true;
           break;
         }
@@ -275,17 +276,24 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
       if (scoreErrorFound) continue;
 
-      // Match intern ONLY by P No (never match using Candidate Name)
+      // Match intern ONLY by P.No
       const intern = await prisma.intern.findFirst({
         where: { p_no: record.p_no },
       });
 
       if (!intern) {
-        errors.push({
+        warnings.push({
           row: rowNum,
-          error: `Row ${rowNum} : P No ${record.p_no} not found in Intern Master`,
+          warning: `Row ${rowNum} : P.No ${record.p_no} not found in Intern database`,
         });
         continue;
+      }
+
+      if (!record.guide_name) {
+        warnings.push({ row: rowNum, warning: `Row ${rowNum} : Guide Name is blank` });
+      }
+      if (!record.department) {
+        warnings.push({ row: rowNum, warning: `Row ${rowNum} : Department is blank` });
       }
 
       try {
@@ -294,22 +302,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           review_id: req.body.review_id || req.query.review_id as string || undefined,
           guide_name: record.guide_name || undefined,
           department: record.department || undefined,
-          remarks: record.remarks || '',
-          task_completion: record.scores['Q5'],
-          quality_of_work: record.scores['Q6'],
-          problem_solving: record.scores['Q7'],
-          initiative_innovation: record.scores['Q8'],
-          learning_adaptability: record.scores['Q9'],
-          attendance_punctuality: record.scores['Q10'],
-          communication: record.scores['Q11'],
-          professionalism_ethics: record.scores['Q12'],
-          respect_authority: record.scores['Q13'],
-          accountability: record.scores['Q14'],
-          teamwork: record.scores['Q15'],
-          conflict_resolution: record.scores['Q16'],
-          empathy: record.scores['Q17'],
-          leadership_potential: record.scores['Q18'],
-          conflict_handling: record.scores['Q19'],
+          task_completion: record.scores['Q5'] ?? 0,
+          quality_of_work: record.scores['Q6'] ?? 0,
+          problem_solving: record.scores['Q7'] ?? 0,
+          initiative_innovation: record.scores['Q8'] ?? 0,
+          learning_adaptability: record.scores['Q9'] ?? 0,
+          attendance_punctuality: record.scores['Q10'] ?? 0,
+          communication: record.scores['Q11'] ?? 0,
+          professionalism_ethics: record.scores['Q12'] ?? 0,
+          respect_authority: record.scores['Q13'] ?? 0,
+          accountability: record.scores['Q14'] ?? 0,
+          teamwork: record.scores['Q15'] ?? 0,
+          conflict_resolution: record.scores['Q16'] ?? 0,
+          empathy: record.scores['Q17'] ?? 0,
+          leadership_potential: record.scores['Q18'] ?? 0,
+          conflict_handling: record.scores['Q19'] ?? 0,
         });
         successCount++;
       } catch (err: any) {
@@ -325,7 +332,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         data: {
           file_name: req.file.originalname,
           records_imported: successCount,
-          status: errors.length > 0 ? 'Failed' : 'Success',
+          status: errors.length > 0 ? 'Failed' : (warnings.length > 0 ? 'Warnings' : 'Success'),
           module: 'Guide Feedback',
           uploaded_by: 'HR Admin'
         }
@@ -349,7 +356,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (tempPath) deleteTempFile(tempPath);
   }
 });
-
 // GET /api/guide-feedback — List all guide feedbacks
 router.get('/', async (req, res) => {
   try {

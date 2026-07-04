@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, Fragment, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const BASE = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api`;
 
@@ -9,27 +9,26 @@ interface GuideFeedbackData {
   p_no: string | null;
   guide_name: string | null;
   department: string | null;
-  discipline: number | null;
-  learning_ability: number | null;
-  teamwork: number | null;
-  communication: number | null;
-  task_completion: number | null;
-  quality_of_work: number | null;
-  problem_solving: number | null;
-  initiative_innovation: number | null;
-  learning_adaptability: number | null;
-  attendance_punctuality: number | null;
-  professionalism_ethics: number | null;
-  respect_authority: number | null;
-  accountability: number | null;
-  conflict_resolution: number | null;
-  empathy: number | null;
-  leadership_potential: number | null;
-  conflict_handling: number | null;
+  discipline: number;
+  learning_ability: number;
+  teamwork: number;
+  communication: number;
+  task_completion: number;
+  quality_of_work: number;
+  problem_solving: number;
+  initiative_innovation: number;
+  learning_adaptability: number;
+  attendance_punctuality: number;
+  professionalism_ethics: number;
+  respect_authority: number;
+  accountability: number;
+  conflict_resolution: number;
+  empathy: number;
+  leadership_potential: number;
+  conflict_handling: number;
   total_marks: number;
   guide_score: number;
   percentage: number;
-  remarks: string | null;
 }
 
 interface ImportResult {
@@ -80,7 +79,6 @@ const SCORE_OPTIONS = [
   { value: 3, label: 'Average Option (3 pts)' },
   { value: 2, label: 'Poor Option (2 pts)' },
   { value: 1, label: 'Worst Option (1 pt)' },
-  { value: 0, label: '0 pts' },
 ];
 
 const emptyForm = {
@@ -88,7 +86,6 @@ const emptyForm = {
   intern_name: '',
   guide_name: '',
   department: '',
-  remarks: '',
   task_completion: '' as string | number,
   quality_of_work: '' as string | number,
   problem_solving: '' as string | number,
@@ -116,14 +113,7 @@ export default function GuideFeedbackPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Search & Filter State
-  const [search, setSearch] = useState('');
-  const [deptFilter, setDeptFilter] = useState('');
-  const [guideFilter, setGuideFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
 
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
@@ -160,62 +150,30 @@ export default function GuideFeedbackPage() {
     Number(form.leadership_potential || 0) +
     Number(form.conflict_handling || 0);
 
+  const hasAnyScore = 
+    form.task_completion !== '' ||
+    form.quality_of_work !== '' ||
+    form.problem_solving !== '' ||
+    form.initiative_innovation !== '' ||
+    form.learning_adaptability !== '' ||
+    form.communication !== '' ||
+    form.professionalism_ethics !== '' ||
+    form.respect_authority !== '' ||
+    form.accountability !== '' ||
+    form.teamwork !== '' ||
+    form.conflict_resolution !== '' ||
+    form.empathy !== '' ||
+    form.leadership_potential !== '' ||
+    form.conflict_handling !== '';
+
   const calculatedGuideScore = (nonAttendanceSum / 70) * 100;
   const calculatedTotalMarks = nonAttendanceSum + Number(form.attendance_punctuality || 0);
   const calculatedPercentage = (calculatedTotalMarks / 75) * 100;
 
-  // Departments and Guides extracted dynamically
-  const departments = useMemo(() => {
-    return Array.from(new Set(feedbacks.map(f => f.department).filter(Boolean))) as string[];
-  }, [feedbacks]);
-
-  const guides = useMemo(() => {
-    return Array.from(new Set(feedbacks.map(f => f.guide_name).filter(Boolean))) as string[];
-  }, [feedbacks]);
-
-  // filteredFeedbacks computation
-  const filteredFeedbacks = useMemo(() => {
-    return feedbacks.filter(fb => {
-      const searchStr = search.trim().toLowerCase();
-      const matchSearch =
-        !searchStr ||
-        (fb.p_no || '').toLowerCase().includes(searchStr) ||
-        (fb.intern_name || '').toLowerCase().includes(searchStr) ||
-        (fb.guide_name || '').toLowerCase().includes(searchStr) ||
-        (fb.department || '').toLowerCase().includes(searchStr);
-
-      const matchDept = !deptFilter || fb.department === deptFilter;
-      const matchGuide = !guideFilter || fb.guide_name === guideFilter;
-
-      // Status helper: Complete if all Q5-Q19 scores are filled, else Pending
-      const hasNullScore =
-        fb.task_completion === null ||
-        fb.quality_of_work === null ||
-        fb.problem_solving === null ||
-        fb.initiative_innovation === null ||
-        fb.learning_adaptability === null ||
-        fb.attendance_punctuality === null ||
-        fb.communication === null ||
-        fb.professionalism_ethics === null ||
-        fb.respect_authority === null ||
-        fb.accountability === null ||
-        fb.teamwork === null ||
-        fb.conflict_resolution === null ||
-        fb.empathy === null ||
-        fb.leadership_potential === null ||
-        fb.conflict_handling === null;
-
-      const status = hasNullScore ? 'Pending' : 'Complete';
-      const matchStatus = !statusFilter || status === statusFilter;
-
-      return matchSearch && matchDept && matchGuide && matchStatus;
-    });
-  }, [feedbacks, search, deptFilter, guideFilter, statusFilter]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.intern_id.trim()) {
-      setError('P No is required');
+      setError('P.No is required');
       return;
     }
 
@@ -271,22 +229,21 @@ export default function GuideFeedbackPage() {
       intern_name: fb.intern_name || '',
       guide_name: fb.guide_name || '',
       department: fb.department || '',
-      remarks: fb.remarks || '',
-      task_completion: fb.task_completion !== null && fb.task_completion !== undefined ? fb.task_completion : '',
-      quality_of_work: fb.quality_of_work !== null && fb.quality_of_work !== undefined ? fb.quality_of_work : '',
-      problem_solving: fb.problem_solving !== null && fb.problem_solving !== undefined ? fb.problem_solving : '',
-      initiative_innovation: fb.initiative_innovation !== null && fb.initiative_innovation !== undefined ? fb.initiative_innovation : '',
-      learning_adaptability: fb.learning_adaptability !== null && fb.learning_adaptability !== undefined ? fb.learning_adaptability : '',
-      communication: fb.communication !== null && fb.communication !== undefined ? fb.communication : '',
-      professionalism_ethics: fb.professionalism_ethics !== null && fb.professionalism_ethics !== undefined ? fb.professionalism_ethics : '',
-      respect_authority: fb.respect_authority !== null && fb.respect_authority !== undefined ? fb.respect_authority : '',
-      accountability: fb.accountability !== null && fb.accountability !== undefined ? fb.accountability : '',
-      teamwork: fb.teamwork !== null && fb.teamwork !== undefined ? fb.teamwork : '',
-      conflict_resolution: fb.conflict_resolution !== null && fb.conflict_resolution !== undefined ? fb.conflict_resolution : '',
-      empathy: fb.empathy !== null && fb.empathy !== undefined ? fb.empathy : '',
-      leadership_potential: fb.leadership_potential !== null && fb.leadership_potential !== undefined ? fb.leadership_potential : '',
-      conflict_handling: fb.conflict_handling !== null && fb.conflict_handling !== undefined ? fb.conflict_handling : '',
-      attendance_punctuality: fb.attendance_punctuality !== null && fb.attendance_punctuality !== undefined ? fb.attendance_punctuality : '',
+      task_completion: fb.task_completion || '',
+      quality_of_work: fb.quality_of_work || '',
+      problem_solving: fb.problem_solving || '',
+      initiative_innovation: fb.initiative_innovation || '',
+      learning_adaptability: fb.learning_adaptability || '',
+      communication: fb.communication || '',
+      professionalism_ethics: fb.professionalism_ethics || '',
+      respect_authority: fb.respect_authority || '',
+      accountability: fb.accountability || '',
+      teamwork: fb.teamwork || '',
+      conflict_resolution: fb.conflict_resolution || '',
+      empathy: fb.empathy || '',
+      leadership_potential: fb.leadership_potential || '',
+      conflict_handling: fb.conflict_handling || '',
+      attendance_punctuality: fb.attendance_punctuality || '',
     });
     setEditingId(fb.id);
     setError(null);
@@ -348,7 +305,7 @@ export default function GuideFeedbackPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      // Auto-refresh
+      // Auto-refresh — data appears immediately
       fetchFeedbacks();
     } catch (err: any) {
       setError(err.message);
@@ -383,10 +340,6 @@ export default function GuideFeedbackPage() {
     setImportResult(null);
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedFeedback(prev => prev === id ? null : id);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -412,7 +365,7 @@ export default function GuideFeedbackPage() {
             <div>
               <h3 className="font-bold text-emerald-950 flex items-center gap-2">📊 Scoring Rules (Tata Motors Format)</h3>
               <p className="text-xs text-emerald-900 mt-1 leading-relaxed">
-                Excel uses <strong>Q5–Q19</strong> Score columns (0–5 each). <strong>Q10 (Attendance & Punctuality)</strong> is stored but does NOT contribute to Guide Score. 
+                Excel uses <strong>Q5–Q19</strong> Score columns (1–5 each). <strong>Q10 (Attendance & Punctuality)</strong> is stored but does NOT contribute to Guide Score. 
                 The score is calculated based on Q5–Q9 + Q11–Q19 (14 dimensions, Max = 70).
               </p>
               <div className="mt-2 space-y-1">
@@ -460,22 +413,34 @@ export default function GuideFeedbackPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3">
             <h3 className="font-bold text-gray-800 flex items-center gap-2">📋 Import Status</h3>
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
-                <p className="text-2xl font-black text-green-700">{importResult.created}</p>
-                <p className="text-[11px] font-bold text-green-500 uppercase tracking-wider">Successful Records</p>
-              </div>
-              <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
-                <p className="text-2xl font-black text-red-700">{importResult.failed}</p>
-                <p className="text-[11px] font-bold text-red-500 uppercase tracking-wider">Failed Records</p>
-              </div>
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-center">
                 <p className="text-2xl font-black text-blue-700">{importResult.total_parsed}</p>
                 <p className="text-[11px] font-bold text-blue-500 uppercase tracking-wider">Total Rows Parsed</p>
               </div>
+              <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-center">
+                <p className="text-2xl font-black text-green-700">{importResult.created}</p>
+                <p className="text-[11px] font-bold text-green-500 uppercase tracking-wider">Successful Records</p>
+              </div>
+              <div className={`rounded-xl p-3 text-center ${importResult.failed > 0 ? 'bg-red-50 border border-red-100' : 'bg-gray-50 border border-gray-100'}`}>
+                <p className={`text-2xl font-black ${importResult.failed > 0 ? 'text-red-700' : 'text-gray-400'}`}>{importResult.failed}</p>
+                <p className={`text-[11px] font-bold uppercase tracking-wider ${importResult.failed > 0 ? 'text-red-500' : 'text-gray-400'}`}>Failed Records</p>
+              </div>
             </div>
+            {importResult.warnings.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 max-h-48 overflow-y-auto">
+                <p className="font-bold text-sm text-amber-800 mb-1.5 flex items-center gap-1">⚠️ Warnings ({importResult.warnings.length})</p>
+                <ul className="list-disc pl-4 space-y-1 text-xs text-amber-800">
+                  {importResult.warnings.map((w, index) => (
+                    <li key={index}>
+                      {w.warning}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {importResult.errors.length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 max-h-48 overflow-y-auto">
-                <p className="font-bold text-sm text-red-800 mb-1.5 flex items-center gap-1">❌ Validation Errors ({importResult.errors.length})</p>
+                <p className="font-bold text-sm text-red-800 mb-1.5 flex items-center gap-1">❌ Errors ({importResult.errors.length})</p>
                 <ul className="list-disc pl-4 space-y-1 text-xs text-red-800">
                   {importResult.errors.map((err, index) => (
                     <li key={index}>
@@ -522,7 +487,7 @@ export default function GuideFeedbackPage() {
                     value={form.intern_id}
                     onChange={e => setForm({ ...form, intern_id: e.target.value })}
                     className="input"
-                    placeholder="e.g., 012345"
+                    placeholder="e.g., P12345"
                     disabled={!!editingId}
                     required
                   />
@@ -558,17 +523,6 @@ export default function GuideFeedbackPage() {
                     onChange={e => setForm({ ...form, department: e.target.value })}
                     className="input"
                     placeholder="e.g., Mechanical Engineering"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Remarks (Optional)</label>
-                  <input
-                    type="text"
-                    value={form.remarks}
-                    onChange={e => setForm({ ...form, remarks: e.target.value })}
-                    className="input"
-                    placeholder="General performance notes"
                   />
                 </div>
               </div>
@@ -607,11 +561,11 @@ export default function GuideFeedbackPage() {
                   </div>
                   <div className="border-x border-white/20">
                     <p className="text-[10px] opacity-75 uppercase font-bold tracking-wider">Percentage</p>
-                    <p className="text-xl font-black">{calculatedPercentage.toFixed(2)}%</p>
+                    <p className="text-xl font-black">{calculatedPercentage.toFixed(1)}%</p>
                   </div>
                   <div>
                     <p className="text-[10px] opacity-75 uppercase font-bold tracking-wider">Guide Score</p>
-                    <p className="text-xl font-black">{calculatedGuideScore.toFixed(2)}%</p>
+                    <p className="text-xl font-black">{calculatedGuideScore.toFixed(1)}%</p>
                   </div>
                 </div>
                 <p className="text-[9px] opacity-50 mt-2">Guide Score excludes Q10 (Attendance & Punctuality)</p>
@@ -661,182 +615,81 @@ export default function GuideFeedbackPage() {
               )}
             </div>
 
-            {/* Search & Filter section */}
-            <div className="p-4 bg-slate-50 border-b border-slate-100 space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-xs">
-                    🔍
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Search by P No, Candidate Name, Guide Name or Department..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full bg-white pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setDeptFilter('');
-                    setGuideFilter('');
-                    setStatusFilter('');
-                  }}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs px-4 py-2 rounded-xl transition-all"
-                >
-                  Clear
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    value={deptFilter}
-                    onChange={e => setDeptFilter(e.target.value)}
-                    className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="">All Departments</option>
-                    {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={guideFilter}
-                    onChange={e => setGuideFilter(e.target.value)}
-                    className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="">All Guides</option>
-                    {guides.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={statusFilter}
-                    onChange={e => setStatusFilter(e.target.value)}
-                    className="bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="">All Statuses</option>
-                    <option value="Complete">Complete</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-
-                <div className="text-[11px] font-bold text-gray-500 whitespace-nowrap bg-gray-100 px-2.5 py-1 rounded-lg">
-                  Showing {filteredFeedbacks.length} of {feedbacks.length} Records
-                </div>
-              </div>
-            </div>
-
             {loading ? (
               <div className="p-12 flex justify-center">
                 <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : filteredFeedbacks.length === 0 ? (
-              <div className="p-12 text-center text-gray-500 space-y-2">
-                <p className="font-bold text-sm text-gray-800">No Guide Feedback records found.</p>
-                <p className="text-xs text-gray-500">Try another P No, Candidate Name, Guide Name or Department.</p>
+            ) : feedbacks.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">
+                No guide feedbacks submitted yet. Upload a Tata Motors Guide Feedback Excel to get started.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">P No</th>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Candidate Name</th>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Guide Name</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Intern Details</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Guide</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Guide Score</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Total</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Percentage</th>
-                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Remarks</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Q10</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Guide Score</th>
                       <th className="px-4 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
-                    {filteredFeedbacks.map(fb => (
-                      <Fragment key={fb.id}>
-                        <tr 
-                          className="hover:bg-gray-50/50 transition cursor-pointer"
-                          onClick={() => toggleExpand(fb.id)}
-                        >
-                          <td className="px-4 py-3 font-mono text-xs text-gray-700">
-                            {fb.p_no || ''}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-gray-800">
-                            {fb.intern_name || ''}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 text-xs">
-                            {fb.guide_name || ''}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 text-xs">
-                            {fb.department || ''}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {fb.guide_score !== null && fb.guide_score !== undefined ? (
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-                                {fb.guide_score.toFixed(2)}
-                              </span>
-                            ) : ''}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            {fb.percentage !== null && fb.percentage !== undefined ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
-                                {fb.percentage.toFixed(2)}%
-                              </span>
-                            ) : ''}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 text-xs max-w-xs truncate">
-                            {fb.remarks || ''}
-                          </td>
-                          <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEdit(fb)}
-                                className="text-emerald-600 hover:text-emerald-800 font-medium text-xs bg-emerald-50 px-2.5 py-1 rounded-lg"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(fb.intern_id)}
-                                className="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 px-2.5 py-1 rounded-lg"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-
-                        {/* Detailed Score View (Expandable inline row) */}
-                        {expandedFeedback === fb.id && (
-                          <tr key={`${fb.id}-detail`}>
-                            <td colSpan={8} className="p-4 bg-gray-50/50 border-t border-b border-gray-100">
-                              <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm space-y-3">
-                                <h4 className="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2 flex items-center gap-1.5">
-                                  <span>📊</span> Score Details (Q5–Q19)
-                                </h4>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                                  {(DIMENSIONS as any).flatMap((cat: any) => cat.items).map((item: any) => {
-                                    const score = fb[item.key as keyof GuideFeedbackData];
-                                    return (
-                                      <div key={item.key} className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex flex-col justify-between">
-                                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
-                                          {item.label}
-                                        </span>
-                                        <span className="text-sm font-black text-gray-800">
-                                          {score !== null && score !== undefined && score !== '' ? `${score} / 5` : 'N/A'}
-                                        </span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
+                    {feedbacks.map(fb => (
+                      <tr key={fb.id} className="hover:bg-gray-50/50 transition">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-gray-800">{fb.intern_name || ''}</p>
+                          <p className="text-xs text-gray-500 font-mono">{fb.p_no ? `P No: ${fb.p_no}` : ''}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-gray-600 text-xs">{fb.guide_name || ''}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-gray-600 text-xs">{fb.department || ''}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <p className="font-bold text-gray-800">{fb.total_marks ? `${fb.total_marks}/75` : ''}</p>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {fb.total_marks ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                              {(fb.percentage ?? 0).toFixed(1)}%
+                            </span>
+                          ) : ''}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                            {fb.attendance_punctuality || ''}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {fb.total_marks ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                              {fb.guide_score.toFixed(1)}%
+                            </span>
+                          ) : ''}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEdit(fb)}
+                              className="text-emerald-600 hover:text-emerald-800 font-medium text-xs bg-emerald-50 px-2.5 py-1 rounded-lg"
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(fb.intern_id)}
+                              className="text-red-600 hover:text-red-800 font-medium text-xs bg-red-50 px-2.5 py-1 rounded-lg"
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
